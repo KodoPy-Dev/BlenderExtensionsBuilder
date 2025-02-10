@@ -1,75 +1,42 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox
-from pathlib import Path
-
-def setup(root):
-    # Folder selection
-    folder_path = tk.StringVar()
-    tk.Label(root, text="Addon Folder:").pack(anchor='w')
-    folder_frame = tk.Frame(root)
-    folder_frame.pack(fill='x')
-    folder_entry = tk.Entry(folder_frame, textvariable=folder_path, width=30)
-    folder_entry.pack(side='left', fill='x', expand=True)
-    tk.Button(folder_frame, text="Browse", command=lambda: select_folder(folder_path)).pack(side='right')
-
-    # Name Input
-    tk.Label(root, text="Name:").pack(anchor='w')
-    name_entry = tk.Entry(root)
-    name_entry.pack(fill='x')
-
-    # Version Dropdowns
-    tk.Label(root, text="Version:").pack(anchor='w')
-    version_frame = tk.Frame(root)
-    version_frame.pack()
-
-    version_vars = [tk.StringVar(value='0') for _ in range(3)]
-    version_menus = []
-    for var in version_vars:
-        menu = tk.OptionMenu(version_frame, var, *map(str, range(10)))
-        menu.pack(side='left')
-        version_menus.append(menu)
-
-    # Checkboxes
-    options = {"Include Dependencies": tk.BooleanVar(), "Optimize": tk.BooleanVar()}
-    tk.Label(root, text="Options:").pack(anchor='w')
-    for option, var in options.items():
-        tk.Checkbutton(root, text=option, variable=var).pack(anchor='w')
-
-    # Listbox with checkboxes
-    tk.Label(root, text="Additional Options:").pack(anchor='w')
-    listbox = tk.Listbox(root, selectmode='multiple')
-    listbox.pack(fill='both', expand=True)
-    for item in ["Option A", "Option B", "Option C"]:
-        listbox.insert('end', item)
-
-    # Build Button
-    tk.Button(root, text="Build", command=lambda: build(version_vars)).pack(pady=10)
-
-########################•########################
-"""                 CALLBACKS                 """
-########################•########################
-
-def select_folder(folder_path):
-    folder = filedialog.askdirectory()
-    if folder:
-        folder_path.set(folder)
+from tkinter import ttk
 
 
-def build(version_vars):
-    version = "{} . {} . {}".format(*[var.get() for var in version_vars])
-    messagebox.showinfo("Build", f"Extension build process started!\nVersion: {version}")
+root = tk.Tk()
+root.title("Version Picker")
+root.geometry("400x400")
 
-########################•########################
-"""                APPLICATION                """
-########################•########################
+major_var = tk.IntVar(value=1)
+minor_var = tk.IntVar(value=0)
+patch_var = tk.IntVar(value=0)
 
-APP_NAME = "Blender Extension Creator"
-APP_WIDTH = 400
-APP_HEIGHT = 800
+frame = ttk.Frame(root, padding=10)
+frame.pack(fill=tk.BOTH, expand=True)
 
-if __name__ == "__main__":
-    root = tk.Tk()
-    root.title(APP_NAME)
-    root.geometry(f"{int(APP_WIDTH)}x{int(APP_HEIGHT)}")
-    setup(root)
-    root.mainloop()
+# Spinboxes for version selection
+ttk.Label(frame, text="Major:").grid(row=0, column=0)
+major_spin = ttk.Spinbox(frame, from_=0, to=99, textvariable=major_var, width=5)
+major_spin.grid(row=0, column=1)
+
+ttk.Label(frame, text="Minor:").grid(row=0, column=1)
+minor_spin = ttk.Spinbox(frame, from_=0, to=99, textvariable=minor_var, width=5)
+minor_spin.grid(row=1, column=1)
+
+ttk.Label(frame, text="Patch:").grid(row=0, column=2)
+patch_spin = ttk.Spinbox(frame, from_=0, to=99, textvariable=patch_var, width=5)
+patch_spin.grid(row=2, column=1)
+
+# Button to get version
+select_button = ttk.Button(frame, text="Select Version", command=get_version)
+select_button.grid(row=3, column=0, columnspan=2, pady=10)
+
+# Output label
+output_label = ttk.Label(frame, text="Selected Version: 1.0.0")
+output_label.grid(row=4, column=0, columnspan=2)
+
+root.mainloop()
+
+
+def get_version():
+    version = f"{major_var.get()}.{minor_var.get()}.{patch_var.get()}"
+    output_label.config(text=f"Selected Version: {version}")
