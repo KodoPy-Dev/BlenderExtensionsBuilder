@@ -37,9 +37,10 @@ import json
 import shutil
 import traceback
 import subprocess
-import tkinter as tk
 from pathlib import Path
 from collections.abc import Iterable
+import tkinter as tk
+from tkinter import ttk
 from tkinter import filedialog, messagebox
 
 ########################•########################
@@ -844,7 +845,7 @@ class DataBase:
         self.__ext_path_includes = None
         self.__ext_path_excludes = None
 
-    @property # Path
+    @property # IN -> String or Path || OUT -> Path
     def blender_exe_path(self):
         if is_exe(self.__blender_exe_path):
             return Path(self.__blender_exe_path)
@@ -855,7 +856,7 @@ class DataBase:
         if is_exe(value):
             self.__blender_exe_path = Path(value)
 
-    @property # string version 0.0.0
+    @property # IN -> (0,0,0) || OUT -> "0.0.0"
     def blender_ver_min(self):
         if is_iterable(self.__blender_ver_min):
             if len(self.__blender_ver_min) == 3:
@@ -870,7 +871,7 @@ class DataBase:
                 if all(isinstance(item, int) for item in value):
                     self.__blender_ver_min = value
 
-    @property # string version 0.0.0
+    @property # IN -> (0,0,0) || OUT -> "0.0.0"
     def blender_ver_max(self):
         if is_iterable(self.__blender_ver_max):
             if len(self.__blender_ver_max) == 3:
@@ -885,7 +886,7 @@ class DataBase:
                 if all(isinstance(item, int) for item in value):
                     self.__blender_ver_max = value
 
-    @property # Path
+    @property # IN -> String or Path || OUT -> Path
     def src_dir(self):
         if is_dir(self.__src_dir):
             return Path(self.__src_dir)
@@ -896,7 +897,7 @@ class DataBase:
         if is_dir(value):
             self.__src_dir = Path(value)
 
-    @property # Path
+    @property # IN -> String or Path || OUT -> Path
     def build_dir(self):
         if is_dir(self.__build_dir):
             return Path(self.__build_dir)
@@ -907,14 +908,14 @@ class DataBase:
         if is_dir(value):
             self.__build_dir = Path(value)
 
-    @property # string file name with extension
+    @property # IN -> self.ext_id & self.ext_version || OUT -> String
     def build_file_name(self):
         if self.ext_id:
             if self.ext_version:
                 return f"{self.ext_id}-{self.ext_version}.zip"
         return None
 
-    @property # bool
+    @property # IN -> Bool || OUT -> Bool
     def build_split_plats(self):
         return bool(self.__build_split_plats)
     @build_split_plats.setter
@@ -923,7 +924,7 @@ class DataBase:
         if isinstance(value, bool):
             self.__build_split_plats = value
 
-    @property # bool
+    @property # IN -> Bool || OUT -> Bool
     def build_verbose(self):
         return bool(self.__build_verbose)
     @build_verbose.setter
@@ -932,21 +933,21 @@ class DataBase:
         if isinstance(value, bool):
             self.__build_verbose = value
 
-    @property # string version 0.0.0
+    @property # OUT -> "0.0.0"
     def mani_schema_ver(self):
         return "1.0.0"
 
-    @property # string file name with extension
+    @property # OUT -> String Filename w Extension
     def mani_file_name(self):
         return "blender_manifest.toml"
 
-    @property # Path
+    @property # IN -> self.src_dir || OUT -> Path
     def mani_file_path(self):
         if self.src_dir:
             return self.src_dir.joinpath(self.mani_file_name)
         return None
 
-    @property # string
+    @property # IN -> String || OUT -> String
     def dev_author(self):
         if is_string(self.__dev_author):
             return self.__dev_author
@@ -957,7 +958,7 @@ class DataBase:
         if is_string(value):
             self.__dev_author = value
 
-    @property # string
+    @property # IN -> String || OUT -> String
     def dev_email(self):
         if is_string(self.__dev_email):
             return self.__dev_email
@@ -968,7 +969,7 @@ class DataBase:
         if is_email(value):
             self.__dev_email = value
 
-    @property # string safe name
+    @property # IN -> String || OUT -> Safe String
     def ext_id(self):
         if is_string(self.__ext_id):
             return self.__ext_id
@@ -981,7 +982,7 @@ class DataBase:
             if name:
                 self.__ext_id = name
 
-    @property # string
+    @property # IN -> String || OUT -> String
     def ext_name(self):
         if is_string(self.__ext_name):
             return self.__ext_name
@@ -992,7 +993,7 @@ class DataBase:
         if is_string(value):
             self.__ext_name = value
 
-    @property # string type -> EXTENSION_TYPES
+    @property # IN -> String || OUT -> String || EXTENSION_TYPES
     def ext_type(self):
         if is_string(self.__ext_type):
             if self.__ext_type in EXTENSION_TYPES:
@@ -1005,7 +1006,7 @@ class DataBase:
             if value in EXTENSION_TYPES:
                 self.__ext_type = value
 
-    @property # [string tag, ]
+    @property # IN -> self.ext_type [String,] || OUT -> [String,] || ADDON_TAGS or THEME_TAGS
     def ext_tags(self):
         if is_all_strs(self.__ext_tags):
             if self.ext_type == 'add-on':
@@ -1022,7 +1023,7 @@ class DataBase:
             elif self.ext_type == 'theme':
                 self.__ext_tags = [tag for tag in value if tag in THEME_TAGS]
 
-    @property # string 0.0.0
+    @property # IN -> (0,0,0) || OUT -> "0.0.0"
     def ext_version(self):
         if is_iterable(self.__ext_version):
             if len(self.__ext_version) == 3:
@@ -1037,7 +1038,7 @@ class DataBase:
                 if all(isinstance(item, int) for item in value):
                     self.__ext_version = value
 
-    @property # string
+    @property # IN -> String || OUT -> String[:64]
     def ext_tag_line(self):
         if is_string(self.__ext_tag_line):
             return self.__ext_tag_line[:64]
@@ -1048,7 +1049,7 @@ class DataBase:
         if is_string(value):
             self.__ext_tag_line = value
 
-    @property # string
+    @property # IN -> String || OUT -> String
     def ext_website(self):
         if is_website(self.__ext_website):
             return self.__ext_website
@@ -1059,7 +1060,7 @@ class DataBase:
         if is_website(value):
             self.__ext_website = value
 
-    @property # [string license_key, ] -> LICENSES
+    @property # IN -> [String,] || OUT -> [String,] || LICENSES
     def ext_licenses(self):
         if is_all_strs(self.__ext_licenses):
             return self.__ext_licenses
@@ -1072,7 +1073,7 @@ class DataBase:
             if licenses:
                 self.__ext_licenses = licenses
 
-    @property # [(string year, string name),]
+    @property # IN -> [(String Year, String Name),] || OUT -> [(String Year, String Name),]
     def ext_copyright(self):
         if is_iterable(self.__ext_copyright):
             return self.__ext_copyright
@@ -1089,7 +1090,7 @@ class DataBase:
                             self.__ext_copyright = []
                         self.__ext_copyright.append((year, name))
 
-    @property # [(string resource, string reason),] -> PERMISSIONS
+    @property # IN -> [(String Resource, String Reason),] || OUT -> [(String Resource, String Reason),] || PERMISSIONS
     def ext_permissions(self):
         if is_iterable(self.__ext_permissions):
             return self.__ext_permissions
@@ -1106,7 +1107,7 @@ class DataBase:
                             self.__ext_permissions = []
                         self.__ext_permissions.append((resource, reason))
 
-    @property # [string platform, ] -> PLATFORMS
+    @property # IN -> [String Platform,] || OUT -> [String Platform,] || PLATFORMS
     def ext_platforms(self):
         if is_all_strs(self.__ext_platforms):
             return self.__ext_platforms
@@ -1118,7 +1119,7 @@ class DataBase:
             if platforms:
                 self.__ext_platforms = platforms
 
-    @property # [string wheel path, ]
+    @property # IN -> [String Wheel Path,] || OUT -> [String Wheel Path,]
     def ext_wheels(self):
         if is_all_strs(self.__ext_wheels):
             return self.__ext_wheels
@@ -1129,7 +1130,7 @@ class DataBase:
         if is_all_strs(value):
             self.__ext_wheels = value
 
-    @property # [string relative file paths, ]
+    @property # IN -> [String Include Path,] || OUT -> [String Include Path,]
     def ext_path_includes(self):
         if is_all_strs(self.__ext_path_includes):
             return self.__ext_path_includes
@@ -1144,7 +1145,7 @@ class DataBase:
                 if include_paths:
                     self.__ext_path_includes = include_paths
 
-    @property # [string exclude patter, ] -> PATH_EXCLUDE_PATTERNS
+    @property # IN -> [String Exclude Pattern,] || OUT -> [String Exclude Pattern,] || PATH_EXCLUDE_PATTERNS
     def ext_path_excludes(self):
         if is_all_strs(self.__ext_path_excludes):
             return self.__ext_path_excludes
@@ -1333,51 +1334,86 @@ def build_extension():
         print(f"Standard Error: {e.stderr}")
 
 ########################•########################
-"""                 INTERFACE                 """
+"""                 INTERFACES                """
 ########################•########################
 
-def setup(root):
-    # Folder selection
-    folder_path = tk.StringVar()
-    tk.Label(root, text="Addon Folder:").pack(anchor='w')
-    folder_frame = tk.Frame(root)
-    folder_frame.pack(fill='x')
-    folder_entry = tk.Entry(folder_frame, textvariable=folder_path, width=30)
-    folder_entry.pack(side='left', fill='x', expand=True)
-    tk.Button(folder_frame, text="Browse", command=lambda: select_folder(folder_path)).pack(side='right')
+MAX_W = 65
 
-    # Name Input
-    tk.Label(root, text="Name:").pack(anchor='w')
-    name_entry = tk.Entry(root)
-    name_entry.pack(fill='x')
+class VerController:
+    def __init__(self, parent, label="Version", min_ver=(0,0,0), add_use_check=False):
+        self.frame = tk.Frame(parent, padx=2, pady=2, borderwidth=1, relief="solid")
+        self.frame.pack(fill=tk.X)
 
-    # Version Dropdowns
-    tk.Label(root, text="Version:").pack(anchor='w')
-    version_frame = tk.Frame(root)
-    version_frame.pack()
+        self.var_major = tk.IntVar(value=min_ver[0])
+        self.var_minor = tk.IntVar(value=min_ver[1])
+        self.var_patch = tk.IntVar(value=min_ver[2])
+        self.var_use   = None
+        if add_use_check:
+            self.var_use = tk.BooleanVar(value=False)
 
-    version_vars = [tk.StringVar(value='0') for _ in range(3)]
-    version_menus = []
-    for var in version_vars:
-        menu = tk.OptionMenu(version_frame, var, *map(str, range(10)))
-        menu.pack(side='left')
-        version_menus.append(menu)
+        self.label = tk.Label(self.frame, text=label)
+        self.spin_major = tk.Spinbox(self.frame, from_=min_ver[0], to=sys.maxsize, textvariable=self.var_major, width=5)
+        self.spin_minor = tk.Spinbox(self.frame, from_=min_ver[1], to=sys.maxsize, textvariable=self.var_minor, width=5)
+        self.spin_patch = tk.Spinbox(self.frame, from_=min_ver[2], to=sys.maxsize, textvariable=self.var_patch, width=5)
+        self.check_box = None
+        if add_use_check:
+            self.check_box = tk.Checkbutton(self.frame, text='Use', variable=self.var_use, command=self.com_check_box, width=5)
 
-    # Checkboxes
-    options = {"Include Dependencies": tk.BooleanVar(), "Optimize": tk.BooleanVar()}
-    tk.Label(root, text="Options:").pack(anchor='w')
-    for option, var in options.items():
-        tk.Checkbutton(root, text=option, variable=var).pack(anchor='w')
+        self.label.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+        if add_use_check:
+            self.check_box.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+        else:
+            self.spin_major.pack(side=tk.LEFT, expand=False, fill=tk.BOTH)
+            self.spin_minor.pack(side=tk.LEFT, expand=False, fill=tk.BOTH)
+            self.spin_patch.pack(side=tk.LEFT, expand=False, fill=tk.BOTH)
 
-    # Listbox with checkboxes
-    tk.Label(root, text="Additional Options:").pack(anchor='w')
-    listbox = tk.Listbox(root, selectmode='multiple')
-    listbox.pack(fill='both', expand=True)
-    for item in ["Option A", "Option B", "Option C"]:
-        listbox.insert('end', item)
 
-    # Build Button
-    tk.Button(root, text="Build", command=lambda: build(version_vars)).pack(pady=10)
+    def com_check_box(self):
+        if self.var_use.get():
+            print("TRUE")
+            self.spin_major.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+            self.spin_minor.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+            self.spin_patch.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+
+        else:
+            print("FALSE")
+            self.spin_major.pack_forget()
+            self.spin_minor.pack_forget()
+            self.spin_patch.pack_forget()
+
+
+    def get_version(self):
+        # Check box is not used
+        if self.check_box and self.var_use and not self.var_use.get():
+            return None
+        # Valid
+        return (self.var_major.get(), self.var_minor.get(), self.var_patch.get())
+
+########################•########################
+"""                    APP                    """
+########################•########################
+
+class App:
+    def __init__(self, root):
+        self.root = root
+        self.frame = tk.Frame(root)
+        self.frame.pack(padx=5, pady=5, side=tk.LEFT, fill=tk.Y)
+
+        # Versions
+        self.ext_ver     = VerController(self.frame, label="Extension Version")
+        self.b3d_ver_min = VerController(self.frame, label="Blender Min Version", min_ver=(4,2,0))
+        self.b3d_ver_max = VerController(self.frame, label="Blender Max Version", min_ver=(4,2,0), add_use_check=True)
+
+    #     # Preview
+    #     self.preview_button = ttk.Button(self.frame, text="Preview", command=self.display_preview)
+    #     self.preview_button.pack(pady=10)
+    #     self.output_label = ttk.Label(self.frame, text="Selected Versions:")
+    #     self.output_label.pack()
+
+
+    # def display_preview(self):
+    #     versions = f"Version 1: {self.ver1.get_version()}\nVersion 2: {self.ver2.get_version()}"
+    #     self.output_label.config(text=versions)
 
 ########################•########################
 """                 CALLBACKS                 """
@@ -1397,15 +1433,11 @@ def build(version_vars):
 """                APPLICATION                """
 ########################•########################
 
-APP_NAME = "Blender Extension Creator"
-APP_WIDTH = 400
-APP_HEIGHT = 800
-
 if __name__ == "__main__":
     DB = DataBase()
     root = tk.Tk()
-    root.title(APP_NAME)
-    root.geometry(f"{int(APP_WIDTH)}x{int(APP_HEIGHT)}")
-    setup(root)
+    root.title("Blender Extension Creator")
+    root.geometry("400x600")
+    root.resizable(False, False)
+    app = App(root)
     root.mainloop()
-
