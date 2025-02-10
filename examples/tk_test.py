@@ -43,8 +43,20 @@ for filter in ["Blurring", "Sharpening"]:
         bg="lightgreen",
     ).pack(anchor="w", padx=20, pady=5)
 
+shit_tab = tk.Frame(notebook, bg="lightgreen")
+shit_var = tk.StringVar(value="None")
+for filter in ["Blurring", "Sharpening"]:
+    tk.Radiobutton(
+        shit_tab,
+        text=filter,
+        variable=shit_var,
+        value=filter,
+        bg="lightgreen",
+    ).pack(anchor="w", padx=20, pady=5)
+
 notebook.add(tools_tab, text="Tools")
 notebook.add(filters_tab, text="Filters")
+notebook.add(shit_tab, text="Shit")
 
 # Image frame
 image_frame = tk.Frame(root, width=400, height=400, bg="grey")

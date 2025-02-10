@@ -1337,8 +1337,6 @@ def build_extension():
 """                 INTERFACES                """
 ########################•########################
 
-MAX_W = 65
-
 class VerController:
     def __init__(self, parent, label="Version", min_ver=(0,0,0), add_use_check=False):
         self.frame = tk.Frame(parent, padx=2, pady=2, borderwidth=1, relief="solid")
