@@ -133,9 +133,19 @@ def make_safe_folder_name(name=""):
     name = name[:255]
     return name
 
+
+def get_file_extension(file_path):
+    return Path(file_path).suffix.lower()
+
 ########################•########################
 """                 VALIDATORS                """
 ########################•########################
+
+'''
+These validators do not:
+    - Check if strings within iterable items are within the proper options
+    - Check to make sure file extension types are correct
+'''
 
 is_integer     = lambda item: isinstance(item, int)
 is_string      = lambda item: isinstance(item, str) and bool(item.strip())
@@ -145,6 +155,7 @@ is_path        = lambda item: isinstance(item, (str, Path)) and Path(item).is_fi
 is_dir         = lambda item: isinstance(item, (str, Path)) and Path(item).exists()
 is_exe         = lambda item: is_path(item) and os.access(item, os.X_OK)
 is_folder_name = lambda item: is_string(item) and item == make_safe_folder_name(name=item)
+is_file_name   = lambda item: is_string(item) and len(os.path.splitext(item)) == 2 and all(is_string(sub) for sub in os.path.splitext(item))
 is_iterable    = lambda item: isinstance(item, Iterable) and not isinstance(item, (str, bytes))
 is_all_strs    = lambda item: is_iterable(item) and all(is_string(sub) for sub in item)
 is_ver_str     = lambda item: is_string(item) and len(item.split(".")) == 3 and all(sub.isdigit() for sub in item.split("."))
@@ -163,6 +174,7 @@ class DB:
 
     # --- BUILD --- #
     BUILD_FOLDER_NAME = ""
+    BUILD_FILE_NAME = ""
     BUILD_DIR = ""
 
     # --- MANIFEST --- #
@@ -191,53 +203,47 @@ class DB:
     EXT_PERMISSIONS = []
     EXT_EXCLUDES    = []
 
+    # --- VALIDATORS --- #
+    VALIDATION_RULES = {
+        "BLENDER_EXE_PATH": is_exe,
+        "SRC_DIR": is_dir,
+        "SRC_PARENT_DIR": is_dir,
+        "BUILD_FOLDER_NAME": is_folder_name,
+        "BUILD_FILE_NAME": is_file_name,
+        "BUILD_DIR": is_dir,
+        "MANI_FILE_NAME": is_file_name,
+        "MANI_FILE_PATH": is_path,
+        "MANI_SCHEMA_VER": is_ver_str,
+        "EXT_FILE_PATH": is_path,
+        "EXT_ID": is_string,
+        "EXT_NAME": is_string,
+        "EXT_TYPE": is_string,
+        "EXT_ADDON_TAGS": is_all_strs,
+        "EXT_THEME_TAGS": is_all_strs,
+        "EXT_VERSION": is_ver_str,
+        "EXT_TAG_LINE": is_string,
+        "EXT_MAINTAINER": is_string,
+        "EXT_WEBSITE": is_string,
+        "EXT_B3D_VER_MIN": is_ver_str,
+        "EXT_B3D_VER_MAX": is_ver_str,
+        "EXT_LICENSE": is_ver_str,
+        "EXT_COPYRIGHT": is_all_strs,
+        "EXT_PLATFORMS": is_all_strs,
+        "EXT_WHEELS": is_all_strs,
+        "EXT_PERMISSIONS": is_all_strs,
+        "EXT_EXCLUDES": is_all_strs,
+    }
+
     @classmethod
-    def validate_attributes(cls, attrs=[]):
-        # Error : Nothing
-        if not attrs:
-            return False
-        # Error : Type
+    def validate_attributes(cls, attrs):
         if not isinstance(attrs, (list, tuple, set)):
             return False
-        # Test
         for attr in attrs:
-            # Error : Type
-            if not isinstance(attr, str):
+            if not isinstance(attr, str) or not hasattr(cls, attr):
                 return False
-            # Error : Non Existent
-            if not hasattr(cls, attr):
+            validator = cls.VALIDATION_RULES.get(attr, None)
+            if validator and not validator(getattr(cls, attr)):
                 return False
-            # Validate Attributes
-            valid = True
-            if attr == 'BLENDER_EXE_PATH':    valid = is_exe(cls.BLENDER_EXE_PATH)
-            elif attr == 'SRC_DIR':           valid = is_dir(cls.SRC_DIR)
-            elif attr == 'SRC_PARENT_DIR':    valid = is_dir(cls.SRC_PARENT_DIR)
-            elif attr == 'BUILD_FOLDER_NAME': valid = is_folder(cls.BUILD_FOLDER_NAME)
-            elif attr == 'BUILD_DIR':         valid = is_dir(cls.BUILD_DIR)
-            elif attr == 'MANI_FILE_NAME':    valid = is_string(cls.MANI_FILE_NAME)
-            elif attr == 'MANI_FILE_PATH':    valid = is_path(cls.MANI_FILE_PATH)
-            elif attr == 'MANI_SCHEMA_VER':   valid = is_ver_str(cls.MANI_SCHEMA_VER)
-            elif attr == 'EXT_FILE_PATH':     valid = is_path(cls.EXT_FILE_PATH)
-            elif attr == 'EXT_ID':            valid = is_string(cls.EXT_ID)
-            elif attr == 'EXT_NAME':          valid = is_string(cls.EXT_NAME)
-            elif attr == 'EXT_TYPE':          valid = is_string(cls.EXT_TYPE)
-            elif attr == 'EXT_ADDON_TAGS':    valid = is_all_strs(cls.EXT_ADDON_TAGS)
-            elif attr == 'EXT_THEME_TAGS':    valid = is_all_strs(cls.EXT_THEME_TAGS)
-            elif attr == 'EXT_VERSION':       valid = is_ver_str(cls.EXT_VERSION)
-            elif attr == 'EXT_TAG_LINE':      valid = is_string(cls.EXT_TAG_LINE)
-            elif attr == 'EXT_MAINTAINER':    valid = is_string(cls.EXT_MAINTAINER)
-            elif attr == 'EXT_WEBSITE':       valid = is_string(cls.EXT_WEBSITE)
-            elif attr == 'EXT_B3D_VER_MIN':   valid = is_ver_str(cls.EXT_B3D_VER_MIN)
-            elif attr == 'EXT_B3D_VER_MAX':   valid = is_ver_str(cls.EXT_B3D_VER_MAX)
-            elif attr == 'EXT_LICENSE':       valid = is_ver_str(cls.EXT_LICENSE)
-            elif attr == 'EXT_COPYRIGHT':     valid = is_all_strs(cls.EXT_COPYRIGHT)
-            elif attr == 'EXT_PLATFORMS':     valid = is_all_strs(cls.EXT_PLATFORMS)
-            elif attr == 'EXT_WHEELS':        valid = is_all_strs(cls.EXT_WHEELS)
-            elif attr == 'EXT_PERMISSIONS':   valid = is_all_strs(cls.EXT_PERMISSIONS)
-            elif attr == 'EXT_EXCLUDES':      valid = is_all_strs(cls.EXT_EXCLUDES)
-            if not valid:
-                return False
-        # Valid
         return True
 
 ########################•########################
@@ -246,11 +252,11 @@ class DB:
 
 def setup_build_folder():
     # Error : Requirements
-    if not DB.validate_attributes(attrs=['EXT_ID', 'SRC_PARENT_PATH']):
+    if not DB.validate_attributes(attrs=['EXT_ID', 'SRC_PARENT_DIR']):
         return False
     # Path
     DB.BUILD_FOLDER_NAME = make_safe_folder_name(name=f"{DB.EXT_ID}_build")
-    DB.BUILD_DIR = Path.joinpath(DB.SRC_PARENT_PATH, DB.BUILD_FOLDER_NAME)
+    DB.BUILD_DIR = Path.joinpath(DB.SRC_PARENT_DIR, DB.BUILD_FOLDER_NAME)
     # Create
     if not DB.BUILD_DIR.exists():
         os.makedirs(DB.BUILD_DIR)
@@ -265,6 +271,16 @@ def setup_build_folder():
 ########################•########################
 
 def write_manifest_file():
+    # Error : Manifest File Path
+    if not DB.validate_attributes(attrs=['MANI_FILE_PATH']):
+        return False
+    # Error : Manifest File Ext
+    if get_file_extension(file_path=DB.MANI_FILE_PATH) != 'toml':
+        return False
+    # Error : Required Manifest Values
+    if not DB.validate_attributes(attrs=['EXT_B3D_VER_MIN', 'EXT_ID', 'EXT_LICENSE', 'EXT_MAINTAINER', 'EXT_NAME', 'MANI_SCHEMA_VER', 'EXT_TAG_LINE', 'EXT_TYPE', 'EXT_VERSION']):
+        return False
+
     f = open("demofile3.txt", "w")
     f.write("Woops! I have deleted the content!")
     f.close()
@@ -282,22 +298,17 @@ def build_extension():
     if not DB.MANI_CREATED:
         return False
 
-
-    # Error
-    if not validate_data_keys(keys=['BLENDER_EXE_PATH', 'ADDON_PARENT_DIR', 'BUILD_DIR']):
-        return False
-
     global DATA
     blender = DATA['BLENDER_EXE_PATH']
     source_dir = DATA['ADDON_PARENT_DIR']
     output_dir = DATA['BUILD_DIR']
 
     command = [
-        blender,
+        DB.BLENDER_EXE_PATH,
         "--command", "extension build",
-        "--source-dir", source_dir,
-        "--output-dir", output_dir,
-        "--output-filepath", None,
+        "--source-dir", DB.SRC_DIR,
+        "--output-dir", DB.BUILD_DIR,
+        "--output-filepath", DB.M,
         "--valid-tags", None,
         "--split-platforms",
         "--verbose",
