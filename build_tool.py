@@ -1,10 +1,38 @@
 ########################•########################
+"""                   NOTES                   """
+########################•########################
+
+'''
+______LICENSE______
+GNU GENERAL PUBLIC LICENSE
+
+______DISCLAIMER______
+This software is provided "as is" without any warranties, express or implied. 
+Use at your own risk. The author is not responsible for any damage, data loss, 
+or issues arising from the use of this code.
+
+______USAGE______
+Run python script from system terminal
+>python build_tool.py
+Use the GUI interface to set the Directories and Extension Settings
+Press Build to generate the build folder, write the manifest file and process the build commands
+
+______LEGEND______
+PATH = Full file path with extension
+DIR  = Directory only
+EXE  = Executable File
+MANI = Manifest
+VER  = Version
+'''
+
+########################•########################
 """                  IMPORTS                  """
 ########################•########################
 
 import os
 import re
 import sys
+import json
 import shutil
 import traceback
 import subprocess
@@ -14,7 +42,7 @@ from collections.abc import Iterable
 from tkinter import filedialog, messagebox
 
 ########################•########################
-"""                 MENU OPTIONS              """
+"""                   OPTIONS                 """
 ########################•########################
 
 LICENSES = [
@@ -22,12 +50,12 @@ LICENSES = [
     "SPDX:CC0-1.0",
 ]
 
-EXTENSION_TYPE = [
+EXTENSION_TYPES = [
     "add-on",
     "theme",
 ]
 
-EXTENSION_TAGS = [
+ADDON_TAGS = [
     "3D View",
     "Add Curve",
     "Add Mesh",
@@ -94,145 +122,183 @@ PATH_EXCLUDE_PATTERNS = [
 ]
 
 ########################•########################
-"""                 USER DATA                 """
+"""                   UTILS                   """
 ########################•########################
 
-DATA = {
-    # --- Directories --- #
-    'BLENDER_EXE_PATH'    : "",
-    'ADDON_PARENT_DIR'    : None,
-    'ADDON_DIR'           : None,
-    'BUILD_FOLDER_NAME'   : None,
-    'BUILD_DIR'           : None,
-    'EXTENSION_FILE_PATH' : None,
-    'MANIFEST_FILE_NAME'  : 'blender_manifest.toml',
-
-    # --- Manifest --- #
-    'ADDON_NAME'          : None,
-    'SCHEMA_VERSION'      : "",
-    'ID'                  : "",
-    'VERSION'             : "",
-    'TAG_LINE'            : "",
-    'MAINTAINER'          : "",
-    'TYPE'                : "",
-    'WEBSITE'             : "",
-    'ADDON_TAGS'          : [],
-    'THEME_TAGS'          : [],
-    'B3D_VER_MIN'         : "",
-    'B3D_VER_MAX'         : "",
-    'LICENSE'             : [],
-    'COPYRIGHT'           : [],
-    'PLATFORMS'           : [],
-    'WHEELS'              : [],
-    'PERMISSIONS'         : [],
-    'EXCLUDE_PATTERNS'    : [],
-}
+def make_safe_folder_name(name=""):
+    name = name.strip()
+    name = re.sub(r'[<>:"/\\|?*.]', '', name)
+    name = re.sub(r'[\x00-\x1f\x7f]', '', name)
+    name = name.replace(" ", "_")
+    name = name[:255]
+    return name
 
 ########################•########################
 """                 VALIDATORS                """
 ########################•########################
 
-check_string     = lambda item: isinstance(item, str) and bool(item.strip())
-check_integer    = lambda item: isinstance(item, int)
-check_float      = lambda item: isinstance(item, float)
-check_tuple_type = lambda item: isinstance(item, tuple)
-check_iterable   = lambda item: isinstance(item, Iterable) and not isinstance(item, (str, bytes))
-check_path_exist = lambda item: isinstance(item, (str, Path)) and Path(item).exists()
-check_file_exist = lambda item: isinstance(item, (str, Path)) and Path(item).is_file()
-check_executable = lambda item: check_file_exist(item) and os.access(item, os.X_OK)
+is_integer     = lambda item: isinstance(item, int)
+is_string      = lambda item: isinstance(item, str) and bool(item.strip())
+is_float       = lambda item: isinstance(item, float)
+is_tuple       = lambda item: isinstance(item, tuple)
+is_path        = lambda item: isinstance(item, (str, Path)) and Path(item).is_file()
+is_dir         = lambda item: isinstance(item, (str, Path)) and Path(item).exists()
+is_exe         = lambda item: is_path(item) and os.access(item, os.X_OK)
+is_folder_name = lambda item: is_string(item) and item == make_safe_folder_name(name=item)
+is_iterable    = lambda item: isinstance(item, Iterable) and not isinstance(item, (str, bytes))
+is_all_strs    = lambda item: is_iterable(item) and all(is_string(sub) for sub in item)
+is_ver_str     = lambda item: is_string(item) and len(item.split(".")) == 3 and all(sub.isdigit() for sub in item.split("."))
 
+########################•########################
+"""                 DATA BASE                 """
+########################•########################
 
-def validate_data_keys(keys=[]):
-    global DATA
-    for key in keys:
-        if key not in DATA:
+class DB:
+    # --- BLENDER --- #
+    BLENDER_EXE_PATH = ""
+
+    # --- SOURCE --- #
+    SRC_DIR = ""
+    SRC_PARENT_DIR = ""
+
+    # --- BUILD --- #
+    BUILD_FOLDER_NAME = ""
+    BUILD_DIR = ""
+
+    # --- MANIFEST --- #
+    MANI_CREATED = False
+    MANI_FILE_NAME  = "blender_manifest.toml"
+    MANI_FILE_PATH  = ""
+    MANI_SCHEMA_VER = "1.0.0"
+
+    # --- EXTENSION --- #
+    EXT_FILE_PATH   = ""
+    EXT_ID          = ""
+    EXT_NAME        = ""
+    EXT_TYPE        = ""
+    EXT_ADDON_TAGS  = []
+    EXT_THEME_TAGS  = []
+    EXT_VERSION     = ""
+    EXT_TAG_LINE    = ""
+    EXT_MAINTAINER  = ""
+    EXT_WEBSITE     = ""
+    EXT_B3D_VER_MIN = ""
+    EXT_B3D_VER_MAX = ""
+    EXT_LICENSE     = ""
+    EXT_COPYRIGHT   = []
+    EXT_PLATFORMS   = []
+    EXT_WHEELS      = []
+    EXT_PERMISSIONS = []
+    EXT_EXCLUDES    = []
+
+    @classmethod
+    def validate_attributes(cls, attrs=[]):
+        # Error : Nothing
+        if not attrs:
             return False
-        if key == 'ADDON_NAME':
-            if not check_string(item=key):
+        # Error : Type
+        if not isinstance(attrs, (list, tuple, set)):
+            return False
+        # Test
+        for attr in attrs:
+            # Error : Type
+            if not isinstance(attr, str):
                 return False
-        elif key == 'ADDON_PARENT_DIR':
-            if not check_path_exist(item=key):
+            # Error : Non Existent
+            if not hasattr(cls, attr):
                 return False
-        elif key == 'ADDON_DIR':
-            if not check_path_exist(item=key):
+            # Validate Attributes
+            valid = True
+            if attr == 'BLENDER_EXE_PATH':    valid = is_exe(cls.BLENDER_EXE_PATH)
+            elif attr == 'SRC_DIR':           valid = is_dir(cls.SRC_DIR)
+            elif attr == 'SRC_PARENT_DIR':    valid = is_dir(cls.SRC_PARENT_DIR)
+            elif attr == 'BUILD_FOLDER_NAME': valid = is_folder(cls.BUILD_FOLDER_NAME)
+            elif attr == 'BUILD_DIR':         valid = is_dir(cls.BUILD_DIR)
+            elif attr == 'MANI_FILE_NAME':    valid = is_string(cls.MANI_FILE_NAME)
+            elif attr == 'MANI_FILE_PATH':    valid = is_path(cls.MANI_FILE_PATH)
+            elif attr == 'MANI_SCHEMA_VER':   valid = is_ver_str(cls.MANI_SCHEMA_VER)
+            elif attr == 'EXT_FILE_PATH':     valid = is_path(cls.EXT_FILE_PATH)
+            elif attr == 'EXT_ID':            valid = is_string(cls.EXT_ID)
+            elif attr == 'EXT_NAME':          valid = is_string(cls.EXT_NAME)
+            elif attr == 'EXT_TYPE':          valid = is_string(cls.EXT_TYPE)
+            elif attr == 'EXT_ADDON_TAGS':    valid = is_all_strs(cls.EXT_ADDON_TAGS)
+            elif attr == 'EXT_THEME_TAGS':    valid = is_all_strs(cls.EXT_THEME_TAGS)
+            elif attr == 'EXT_VERSION':       valid = is_ver_str(cls.EXT_VERSION)
+            elif attr == 'EXT_TAG_LINE':      valid = is_string(cls.EXT_TAG_LINE)
+            elif attr == 'EXT_MAINTAINER':    valid = is_string(cls.EXT_MAINTAINER)
+            elif attr == 'EXT_WEBSITE':       valid = is_string(cls.EXT_WEBSITE)
+            elif attr == 'EXT_B3D_VER_MIN':   valid = is_ver_str(cls.EXT_B3D_VER_MIN)
+            elif attr == 'EXT_B3D_VER_MAX':   valid = is_ver_str(cls.EXT_B3D_VER_MAX)
+            elif attr == 'EXT_LICENSE':       valid = is_ver_str(cls.EXT_LICENSE)
+            elif attr == 'EXT_COPYRIGHT':     valid = is_all_strs(cls.EXT_COPYRIGHT)
+            elif attr == 'EXT_PLATFORMS':     valid = is_all_strs(cls.EXT_PLATFORMS)
+            elif attr == 'EXT_WHEELS':        valid = is_all_strs(cls.EXT_WHEELS)
+            elif attr == 'EXT_PERMISSIONS':   valid = is_all_strs(cls.EXT_PERMISSIONS)
+            elif attr == 'EXT_EXCLUDES':      valid = is_all_strs(cls.EXT_EXCLUDES)
+            if not valid:
                 return False
-        elif key == 'BUILD_FOLDER_NAME':
-            if not check_string(item=key):
-                return False
-        elif key == 'BUILD_DIR':
-            if not check_path_exist(item=key):
-                return False
-        elif key == 'EXTENSION_FILE_PATH':
-            if not check_file_exist(item=key):
-                return False
-    return True
-
-
-def make_safe_folder_name(name=""):
-    name = name.strip()
-    name = re.sub(r'[<>:"/\\|?*.]', '_', name)
-    name = re.sub(r'[\x00-\x1f\x7f]', '', name)
-    name = name[:255]
-    return name
+        # Valid
+        return True
 
 ########################•########################
-"""                 DIRECTORIES               """
+"""                   FOLDERS                 """
 ########################•########################
 
-def set_build_folder():
-
-    # Errors
-    if not validate_path_keys(keys=['ADDON_NAME', 'ADDON_PARENT_DIR']):
+def setup_build_folder():
+    # Error : Requirements
+    if not DB.validate_attributes(attrs=['EXT_ID', 'SRC_PARENT_PATH']):
         return False
-
     # Path
-    global PATH_DATA
-    addon_name = PATH_DATA['ADDON_NAME']
-    addon_parent_dir = PATH_DATA['ADDON_PARENT_DIR']
-    build_folder_name = make_safe_folder_name(name=f"{addon_name}_build")
-    build_dir = Path.joinpath(addon_parent_dir, build_folder_name)
-
+    DB.BUILD_FOLDER_NAME = make_safe_folder_name(name=f"{DB.EXT_ID}_build")
+    DB.BUILD_DIR = Path.joinpath(DB.SRC_PARENT_PATH, DB.BUILD_FOLDER_NAME)
     # Create
-    if not build_dir.exists():
-        os.makedirs(build_dir)
-
-    # Errors
-    if not build_dir.exists():
+    if not DB.BUILD_DIR.exists():
+        os.makedirs(DB.BUILD_DIR)
+    # Error : Nonexistent
+    if not DB.BUILD_DIR.exists():
         return False
-
-    # Assign
-    PATH_DATA['BUILD_DIR'] = build_dir
-    PATH_DATA['BUILD_FOLDER_NAME'] = build_folder_name
+    # Valid
     return True
 
+########################•########################
+"""                   FILES                   """
+########################•########################
 
-def set_manifest_file():
+def write_manifest_file():
     f = open("demofile3.txt", "w")
     f.write("Woops! I have deleted the content!")
     f.close()
+
+    DB.MANI_CREATED = True
 
 ########################•########################
 """                  COMMANDS                 """
 ########################•########################
 
 def build_extension():
-    global BLENDER_EXE_PATH, PATH_DATA, MANIFEST_DATA
-
-    # Error
-    if not validate_path_keys(keys=PATH_DATA.keys()):
+    # Error : Requirements
+    if not DB.validate_attributes(attrs=['BLENDER_EXE_PATH', 'SRC_PATH', 'BUILD_DIR']):
+        return False
+    if not DB.MANI_CREATED:
         return False
 
 
-    source_dir = PATH_DATA['ADDON_PARENT_DIR']
-    output_dir = PATH_DATA['BUILD_DIR']
+    # Error
+    if not validate_data_keys(keys=['BLENDER_EXE_PATH', 'ADDON_PARENT_DIR', 'BUILD_DIR']):
+        return False
+
+    global DATA
+    blender = DATA['BLENDER_EXE_PATH']
+    source_dir = DATA['ADDON_PARENT_DIR']
+    output_dir = DATA['BUILD_DIR']
 
     command = [
-        BLENDER_EXE_PATH,
+        blender,
         "--command", "extension build",
         "--source-dir", source_dir,
         "--output-dir", output_dir,
-        "--output-filepath", OUTPUT_FILEPATH,
-        "--valid-tags", VALID_TAGS_JSON,
+        "--output-filepath", None,
+        "--valid-tags", None,
         "--split-platforms",
         "--verbose",
     ]
@@ -248,16 +314,33 @@ def build_extension():
 
 
 def validate_extension():
-    global PATH_DATA
 
-    if not validate_path_keys(keys=PATH_DATA.keys()):
+    # Error
+    if not validate_data_keys(keys=['BLENDER_EXE_PATH', 'ADDON_DIR', 'ADDON_TYPE', 'ADDON_TAGS', 'THEME_TAGS']):
         return False
 
+    global DATA
+    blender = DATA['BLENDER_EXE_PATH']
+    addon_dir = DATA['ADDON_DIR']
+    addon_type = DATA['ADDON_TYPE']
+    addon_tags = DATA['ADDON_TAGS']
+    theme_tags = DATA['THEME_TAGS']
+
+    valid_tags_arg = ""
+    if addon_type == "add-on":
+        tags = [tag for tag in addon_tags if tag in ADDON_TAGS]
+        if tags:
+            valid_tags_arg = json.dump({"add-on":tags})
+    elif addon_type == "theme":
+        tags = [tag for tag in theme_tags if tag in THEME_TAGS]
+        if tags:
+            valid_tags_arg = json.dump({"theme":tags})
+
     command = [
-        BLENDER_EXE,
+        blender,
         "--command", "extension validate",
-        "--valid-tags", VALID_TAGS_JSON,
-        SOURCE_PATH,
+        "--valid-tags", valid_tags_arg,
+        addon_dir,
     ]
 
     try:
