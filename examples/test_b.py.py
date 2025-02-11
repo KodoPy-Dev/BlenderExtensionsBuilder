@@ -71,3 +71,5 @@ tk.Label(
 tk.Label(image_frame, image=display_image).pack(padx=5, pady=5)
 
 root.mainloop()
+
+

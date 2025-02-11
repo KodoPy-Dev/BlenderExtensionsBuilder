@@ -812,7 +812,30 @@ does_file_name_match_with_ext = lambda file_path, file_name: is_path(file_path) 
 """                 DATA BASE                 """
 ########################•########################
 
-DB = None
+''' | Manifest File Layout
+    |---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    | Blender                | DB                     | Required | Notes
+    |---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    | schema_version         | mani_schema_ver        | O        | Internal version of the file format - use 1.0.0
+    | maintainer             | dev_author <dev_email> | O        | Developer name <email@address.com>
+    | id                     | ext_id                 | O        | Unique identifier for the extension
+    | type                   | ext_type               | O        | “add-on” or “theme”
+    | name                   | ext_name               | O        | Complete name of the extension
+    | version                | ext_version            | O        | Version of the extension
+    | tagline                | ext_tag_line           | O        | One-line short description, up to 64 characters - cannot end with punctuation
+    | tags                   | ext_tags               | X        | Pick tags based on type
+    | website                | ext_website            | X        | Website for the extension
+    | license                | ext_licenses           | O        | List of licenses, use SPDX license identifier
+    | copyright              | ext_copyright          | X        | Some licenses require a copyright, copyrights must be “Year Name” or “Year-Year Name”
+    | blender_version_min    | blender_ver_min        | O        | Minimum supported Blender version - use at least 4.2.0
+    | blender_version_max    | blender_ver_max        | X        | Blender version that the extension does not support, earlier versions are supported
+    | permissions            | ext_permissions        | X        | Options : files, network, clipboard, camera, microphone. Each permission followed by explanation (short single-sentence, up to 64 characters, with no end punctuation)
+    | platforms              | ext_platforms          | X        | List of supported platforms. If omitted, the extension will be available in all operating systems
+    | wheels                 | ext_wheels             | X        | List of relative file-paths Python Wheels
+    | paths                  | ext_path_includes      | X        | A list of file-paths relative to the manifest to include when building the package
+    | paths_exclude_pattern  | ext_path_excludes      | X        | List of string, the pattern matching is compatible with gitignore
+    |---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+'''
 
 class DataBase:
     def __init__(self):
@@ -1159,30 +1182,7 @@ class DataBase:
                 self.__ext_path_excludes = excludes
 
 
-''' | Manifest File Layout
-    |---------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    | Blender                | DB                     | Required | Notes
-    |---------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    | schema_version         | mani_schema_ver        | O        | Internal version of the file format - use 1.0.0
-    | maintainer             | dev_author <dev_email> | O        | Developer name <email@address.com>
-    | id                     | ext_id                 | O        | Unique identifier for the extension
-    | type                   | ext_type               | O        | “add-on” or “theme”
-    | name                   | ext_name               | O        | Complete name of the extension
-    | version                | ext_version            | O        | Version of the extension
-    | tagline                | ext_tag_line           | O        | One-line short description, up to 64 characters - cannot end with punctuation
-    | tags                   | ext_tags               | X        | Pick tags based on type
-    | website                | ext_website            | X        | Website for the extension
-    | license                | ext_licenses           | O        | List of licenses, use SPDX license identifier
-    | copyright              | ext_copyright          | X        | Some licenses require a copyright, copyrights must be “Year Name” or “Year-Year Name”
-    | blender_version_min    | blender_ver_min        | O        | Minimum supported Blender version - use at least 4.2.0
-    | blender_version_max    | blender_ver_max        | X        | Blender version that the extension does not support, earlier versions are supported
-    | permissions            | ext_permissions        | X        | Options : files, network, clipboard, camera, microphone. Each permission followed by explanation (short single-sentence, up to 64 characters, with no end punctuation)
-    | platforms              | ext_platforms          | X        | List of supported platforms. If omitted, the extension will be available in all operating systems
-    | wheels                 | ext_wheels             | X        | List of relative file-paths Python Wheels
-    | paths                  | ext_path_includes      | X        | A list of file-paths relative to the manifest to include when building the package
-    | paths_exclude_pattern  | ext_path_excludes      | X        | List of string, the pattern matching is compatible with gitignore
-    |---------------------------------------------------------------------------------------------------------------------------------------------------------------------
-'''
+DB = DataBase()
 
 ########################•########################
 """                   FOLDERS                 """
@@ -1334,8 +1334,64 @@ def build_extension():
         print(f"Standard Error: {e.stderr}")
 
 ########################•########################
-"""                 INTERFACES                """
+"""                    GUI                    """
 ########################•########################
+
+''' NOTES
+
+ttk widgets =  Button, Checkbutton, Entry, Frame, Label, LabelFrame, Menubutton, PanedWindow, Radiobutton, Scale, Scrollbar, Spinbox, Combobox, Notebook, Progressbar, Separator, Sizegrip, Treeview
+
+'''
+
+
+
+class FilePickController:
+    def __init__(self, parent, label="Blender", file_types=(("All Files", "*.*"),)):
+        self.frame = tk.Frame(parent, padx=2, pady=2, borderwidth=1, relief="solid")
+        self.frame.pack(fill=tk.X)
+        self.file_types = file_types
+        
+        # Label
+        self.label = tk.Label(self.frame, text=label)
+        self.label.pack(side=tk.LEFT, padx=5)
+        
+        # Entry field
+        self.entry = tk.Entry(self.frame)
+        self.entry.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=5)
+
+        # Button to open file dialog
+        self.button = tk.Button(self.frame, text="Open Executable", command=self.open_file_dialog)
+        self.button.pack(side=tk.LEFT, padx=5)
+
+        # Bind the FocusOut event to check validity
+        self.entry.bind("<FocusOut>", self.on_focus_out)
+
+    def open_file_dialog(self):
+        # Open file dialog to select an executable file
+        file_path = filedialog.askopenfilename(title="Select an Executable File", filetypes=self.file_types)
+        
+        if file_path:
+            # Insert selected file path into the entry
+            self.entry.delete(0, tk.END)
+            self.entry.insert(0, file_path)
+
+    def on_focus_out(self, event):
+        # Get the value from the entry field
+        entered_value = self.entry.get()
+        
+        # Check if the entered value is a valid executable file (basic check)
+        if entered_value:
+            if os.path.isfile(entered_value) and os.access(entered_value, os.X_OK):
+                print(f"Valid executable: {entered_value}")
+            else:
+                print("Invalid executable file!")
+                self.entry.delete(0, tk.END)  # Optionally clear the entry if invalid
+                self.entry.insert(0, "Invalid executable")
+        else:
+            print("No path entered.")
+            self.entry.delete(0, tk.END)  # Optionally clear the entry if no path entered
+            self.entry.insert(0, "No path entered")
+
 
 class VerController:
     def __init__(self, parent, label="Version", min_ver=(0,0,0), add_use_check=False):
@@ -1368,13 +1424,10 @@ class VerController:
 
     def com_check_box(self):
         if self.var_use.get():
-            print("TRUE")
             self.spin_major.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
             self.spin_minor.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
             self.spin_patch.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
-
         else:
-            print("FALSE")
             self.spin_major.pack_forget()
             self.spin_minor.pack_forget()
             self.spin_patch.pack_forget()
@@ -1387,9 +1440,6 @@ class VerController:
         # Valid
         return (self.var_major.get(), self.var_minor.get(), self.var_patch.get())
 
-########################•########################
-"""                    APP                    """
-########################•########################
 
 class App:
     def __init__(self, root):
@@ -1397,45 +1447,26 @@ class App:
         self.frame = tk.Frame(root)
         self.frame.pack(padx=5, pady=5, side=tk.LEFT, fill=tk.Y)
 
+        # Blender Path
+        self.blender_file_picker = FilePickController(
+            self.frame, 
+            label="Blender Executable", 
+            file_types=(("Executable Files", "*.exe"), ("All Files", "*.*"))
+        )
+
         # Versions
-        self.ext_ver     = VerController(self.frame, label="Extension Version")
-        self.b3d_ver_min = VerController(self.frame, label="Blender Min Version", min_ver=(4,2,0))
-        self.b3d_ver_max = VerController(self.frame, label="Blender Max Version", min_ver=(4,2,0), add_use_check=True)
-
-    #     # Preview
-    #     self.preview_button = ttk.Button(self.frame, text="Preview", command=self.display_preview)
-    #     self.preview_button.pack(pady=10)
-    #     self.output_label = ttk.Label(self.frame, text="Selected Versions:")
-    #     self.output_label.pack()
-
-
-    # def display_preview(self):
-    #     versions = f"Version 1: {self.ver1.get_version()}\nVersion 2: {self.ver2.get_version()}"
-    #     self.output_label.config(text=versions)
-
-########################•########################
-"""                 CALLBACKS                 """
-########################•########################
-
-def select_folder(folder_path):
-    folder = filedialog.askdirectory()
-    if folder:
-        folder_path.set(folder)
-
-
-def build(version_vars):
-    version = "{} . {} . {}".format(*[var.get() for var in version_vars])
-    messagebox.showinfo("Build", f"Extension build process started!\nVersion: {version}")
+        self.ext_version = VerController(self.frame, label="Extension Version")
+        self.b3d_ver_min = VerController(self.frame, label="Blender Version Min", min_ver=(4,2,0))
+        self.b3d_ver_max = VerController(self.frame, label="Blender Version Max", min_ver=(4,2,0), add_use_check=True)
 
 ########################•########################
 """                APPLICATION                """
 ########################•########################
 
 if __name__ == "__main__":
-    DB = DataBase()
     root = tk.Tk()
     root.title("Blender Extension Creator")
-    root.geometry("400x600")
+    root.geometry("600x800")
     root.resizable(False, False)
     app = App(root)
     root.mainloop()
