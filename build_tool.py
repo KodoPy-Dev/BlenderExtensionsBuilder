@@ -47,6 +47,8 @@ from tkinter import filedialog, messagebox
 """                   OPTIONS                 """
 ########################•########################
 
+'''  DONT FORGET PREFIX ----> SPDX:  '''
+
 LICENSES = {
     "BSD Zero Clause License"                                                                   : "0BSD",
     "3D Slicer License v1.0"                                                                    : "3D-Slicer-1.0",
@@ -1181,7 +1183,6 @@ class DataBase:
             if excludes:
                 self.__ext_path_excludes = excludes
 
-
 DB = DataBase()
 
 ########################•########################
@@ -1337,13 +1338,45 @@ def build_extension():
 """                    GUI                    """
 ########################•########################
 
-''' NOTES
+'''
+ttk = "Themed" Tk
+ttk widgets = Button, Checkbutton, Entry, Frame, Label, LabelFrame, Menubutton, PanedWindow, Radiobutton, Scale, Scrollbar, Spinbox, Combobox, Notebook, Progressbar, Separator, Sizegrip, Treeview
 
-ttk widgets =  Button, Checkbutton, Entry, Frame, Label, LabelFrame, Menubutton, PanedWindow, Radiobutton, Scale, Scrollbar, Spinbox, Combobox, Notebook, Progressbar, Separator, Sizegrip, Treeview
+1) App Root
+2) Main Window Frame
+3) Split into 5 Sections
+    1 - for directories at the top  (blender.exe, source, bould)
+    2 - for Notebook with tabs, this is for config (Will be the largest section). This where all the UI will send data the DB
+    3 - for Notebook with tabs but this is for looking at all the output data. (Manifest Lines || Validate Command || Build Command). Data is stored into list and is updated as data is writen to the DB
+    4 - last section from the bottom is just some helper function buttons, like pop open the docs page
+    5 - And the last section at the bottom is for the (Status Bar || Validate Button || Build Button)
+
+
+Section 2 Notebook Tabs
+
+__________ General __________
+maintainer
+website
+name
+tagline
+tags
+id
+version
+type
+__________ Compatibility __________
+blender_version_min
+blender_version_max
+permissions
+platforms
+__________ Legal __________
+license
+copyright
+__________ Build __________
+wheels
+paths
+paths_exclude_pattern
 
 '''
-
-
 
 class FilePickController:
     def __init__(self, parent, label="Blender", file_types=(("All Files", "*.*"),)):
