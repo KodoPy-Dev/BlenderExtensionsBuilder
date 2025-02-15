@@ -539,73 +539,149 @@ def build_section_2_INFO(frame):
 
     # Notebook
     notebook = ttk.Notebook(frame)
-    notebook.grid(row=0, column=0, sticky="nsew")
+    notebook.grid(row=0, column=0, sticky="nsew", padx=10)
 
     # Extension
-    ext_tab = tk.Frame(notebook)
+    tab_1 = tk.Frame(notebook)
     tools_var = tk.StringVar(value="None")
     for tool in ["Resizing", "Rotating"]:
-        radio_btn = tk.Radiobutton(ext_tab, text=tool, variable=tools_var, value=tool)
+        radio_btn = tk.Radiobutton(tab_1, text=tool, variable=tools_var, value=tool)
         radio_btn.pack(anchor="w", padx=20, pady=5)
 
     # Version
-    ver_tab = tk.Frame(notebook)
+    tab_2 = tk.Frame(notebook)
     tools_var = tk.StringVar(value="None")
     for tool in ["Resizing", "Rotating"]:
-        radio_btn = tk.Radiobutton(ver_tab, text=tool, variable=tools_var, value=tool)
+        radio_btn = tk.Radiobutton(tab_2, text=tool, variable=tools_var, value=tool)
         radio_btn.pack(anchor="w", padx=20, pady=5)
 
     # Developer
-    dev_tab = tk.Frame(notebook)
+    tab_3 = tk.Frame(notebook)
     tools_var = tk.StringVar(value="None")
     for tool in ["Resizing", "Rotating"]:
-        radio_btn = tk.Radiobutton(dev_tab, text=tool, variable=tools_var, value=tool)
+        radio_btn = tk.Radiobutton(tab_3, text=tool, variable=tools_var, value=tool)
         radio_btn.pack(anchor="w", padx=20, pady=5)
 
     # License
-    lic_tab = tk.Frame(notebook)
+    tab_4 = tk.Frame(notebook)
     tools_var = tk.StringVar(value="None")
     for tool in ["Resizing", "Rotating"]:
-        radio_btn = tk.Radiobutton(lic_tab, text=tool, variable=tools_var, value=tool)
+        radio_btn = tk.Radiobutton(tab_4, text=tool, variable=tools_var, value=tool)
         radio_btn.pack(anchor="w", padx=20, pady=5)
 
     # Build
-    bld_tab = tk.Frame(notebook)
+    tab_5 = tk.Frame(notebook)
     tools_var = tk.StringVar(value="None")
     for tool in ["Resizing", "Rotating"]:
-        radio_btn = tk.Radiobutton(bld_tab, text=tool, variable=tools_var, value=tool)
+        radio_btn = tk.Radiobutton(tab_5, text=tool, variable=tools_var, value=tool)
         radio_btn.pack(anchor="w", padx=20, pady=5)
 
     # Add Tabs
-    notebook.add(ext_tab, text="Extension")
-    notebook.add(ver_tab, text="Version")
-    notebook.add(dev_tab, text="Developer")
-    notebook.add(lic_tab, text="License")
-    notebook.add(bld_tab, text="Build")
+    notebook.add(tab_1, text="Extension")
+    notebook.add(tab_2, text="Version")
+    notebook.add(tab_3, text="Developer")
+    notebook.add(tab_4, text="License")
+    notebook.add(tab_5, text="Build")
 
 
 @try_except_decorator
 def build_section_3_PREVIEWS(frame):
     ''' Manifest | Validate | Build '''
-    pass
+
+    # Configure
+    frame.grid_rowconfigure(0, weight=1)
+    frame.grid_columnconfigure(0, weight=1)
+
+    # Notebook
+    notebook = ttk.Notebook(frame)
+    notebook.grid(row=0, column=0, sticky="nsew", padx=10)
+
+    # Manifest
+    tab_1 = tk.Frame(notebook)
+    tools_var = tk.StringVar(value="None")
+    for tool in ["Resizing", "Rotating"]:
+        radio_btn = tk.Radiobutton(tab_1, text=tool, variable=tools_var, value=tool)
+        radio_btn.pack(anchor="w", padx=20, pady=5)
+
+    # Validate Command
+    tab_2 = tk.Frame(notebook)
+    tools_var = tk.StringVar(value="None")
+    for tool in ["Resizing", "Rotating"]:
+        radio_btn = tk.Radiobutton(tab_2, text=tool, variable=tools_var, value=tool)
+        radio_btn.pack(anchor="w", padx=20, pady=5)
+
+    # Build Command
+    tab_3 = tk.Frame(notebook)
+    tools_var = tk.StringVar(value="None")
+    for tool in ["Resizing", "Rotating"]:
+        radio_btn = tk.Radiobutton(tab_3, text=tool, variable=tools_var, value=tool)
+        radio_btn.pack(anchor="w", padx=20, pady=5)
+
+    # Add Tabs
+    notebook.add(tab_1, text="Manifest")
+    notebook.add(tab_2, text="Validate Command")
+    notebook.add(tab_3, text="Build Command")
 
 
 @try_except_decorator
 def build_section_4_UTILS(frame):
     ''' Docs | Extensions '''
-    pass
+
+    # Configure Frame
+    frame.grid_columnconfigure(0, weight=1)
+    frame.grid_columnconfigure(1, weight=1)
+    frame.grid_columnconfigure(2, weight=1)
+    frame.grid_columnconfigure(3, weight=1)
+
+    # Docs
+    button = tk.Button(frame, text="Docs", command=None)
+    button.grid(row=0, column=0, sticky="we", padx=5)
+
+    # Extensions
+    button = tk.Button(frame, text="Extensions", command=None)
+    button.grid(row=0, column=1, sticky="we", padx=5)
+
+    # Notes
+    button = tk.Button(frame, text="Notes", command=None)
+    button.grid(row=0, column=2, sticky="we", padx=5)
+
+    # Loader
+    button = tk.Button(frame, text="Loader", command=None)
+    button.grid(row=0, column=3, sticky="we", padx=5)
 
 
 @try_except_decorator
 def build_section_5_STATUS(frame):
     ''' Valid | Built '''
-    pass
+
+    # Configure Frame
+    frame.grid_columnconfigure(0, weight=1)
+    frame.grid_columnconfigure(1, weight=1)
+
+    # Valid
+    label = tk.Label(frame, text="Valid : False")
+    label.grid(row=0, column=0, sticky="we", padx=5)
+
+    # Built
+    label = tk.Label(frame, text="Built : False")
+    label.grid(row=0, column=1, sticky="we", padx=5)
 
 
 @try_except_decorator
 def build_section_6_ACTIONS(frame):
     ''' Validate | Build '''
-    pass
+
+    # Configure Frame
+    frame.grid_columnconfigure(0, weight=1)
+    frame.grid_columnconfigure(1, weight=1)
+
+    # Docs
+    button = tk.Button(frame, text="Validate", command=None)
+    button.grid(row=0, column=0, sticky="we", padx=5)
+
+    # Extensions
+    button = tk.Button(frame, text="Build", command=None)
+    button.grid(row=0, column=1, sticky="we", padx=5)
 
 ########################•########################
 """                APPLICATION                """
@@ -637,12 +713,12 @@ def create_sections():
     APP_ROOT.grid_rowconfigure(0, weight=1)
 
     # Create frames
-    frame_1 = tk.Frame(APP_ROOT, padx=2, pady=2)
-    frame_2 = tk.Frame(APP_ROOT, padx=2, pady=2)
-    frame_3 = tk.Frame(APP_ROOT, padx=2, pady=2)
-    frame_4 = tk.Frame(APP_ROOT, padx=2, pady=2)
-    frame_5 = tk.Frame(APP_ROOT, padx=2, pady=2)
-    frame_6 = tk.Frame(APP_ROOT, padx=2, pady=2)
+    frame_1 = tk.Frame(APP_ROOT, padx=5, pady=2)
+    frame_2 = tk.Frame(APP_ROOT, padx=5, pady=2)
+    frame_3 = tk.Frame(APP_ROOT, padx=5, pady=2)
+    frame_4 = tk.Frame(APP_ROOT, padx=5, pady=2)
+    frame_5 = tk.Frame(APP_ROOT, padx=5, pady=2)
+    frame_6 = tk.Frame(APP_ROOT, padx=5, pady=2)
 
     # Rows
     frame_1.grid(row=0, column=0, sticky="nsew")
@@ -654,8 +730,8 @@ def create_sections():
 
     # Configure Frames
     APP_ROOT.grid_rowconfigure(0, weight=1)
-    APP_ROOT.grid_rowconfigure(1, weight=6)
-    APP_ROOT.grid_rowconfigure(2, weight=4)
+    APP_ROOT.grid_rowconfigure(1, weight=30)
+    APP_ROOT.grid_rowconfigure(2, weight=10)
     APP_ROOT.grid_rowconfigure(3, weight=1)
     APP_ROOT.grid_rowconfigure(4, weight=1)
     APP_ROOT.grid_rowconfigure(5, weight=1)

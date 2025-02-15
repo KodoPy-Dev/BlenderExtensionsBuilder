@@ -2,15 +2,21 @@ import tkinter as tk
 
 root = tk.Tk()
 
-# Create widgets
-label1 = tk.Label(root, text="Column 0")
-label2 = tk.Label(root, text="Column 1 - Wider")
+# Create a Text widget
+text_box = tk.Text(root, height=10, width=50)
+text_box.pack(side=tk.LEFT, fill=tk.Y)
 
-# Place widgets in the grid
-label1.grid(row=0, column=0)
-label2.grid(row=0, column=1)
+# Insert some text
+text_box.insert(tk.END, "This is some read-only text.\n" * 20)  # Add multiple lines for scrolling
 
-# Configure column 1 to be wider
-root.columnconfigure(1, weight=1)
+# Make the text box read-only
+text_box.config(state=tk.DISABLED)
+
+# Create a Scrollbar widget and link it to the Text widget
+scrollbar = tk.Scrollbar(root, command=text_box.yview)
+scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+# Link the scrollbar to the Text widget
+text_box.config(yscrollcommand=scrollbar.set)
 
 root.mainloop()
