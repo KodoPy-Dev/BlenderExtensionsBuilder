@@ -21,29 +21,28 @@
         ttk = "Themed" Tk
         ttk widgets = Button, Checkbutton, Entry, Frame, Label, LabelFrame, Menubutton, PanedWindow, Radiobutton, Scale, Scrollbar, Spinbox, Combobox, Notebook, Progressbar, Separator, Sizegrip, Treeview
 
-
     ___ Manifest File Layout ___
         |--------------------------------------------------------------------------------------------------------------------------------------------
-        | Blender                | Required | Notes
+        |        Blender         | Required |    TAB    |        Notes
         |--------------------------------------------------------------------------------------------------------------------------------------------
-        | schema_version         | O        | Internal version of the file format - use 1.0.0
-        | maintainer             | O        | Developer name <email@address.com>
-        | id                     | O        | Unique identifier for the extension
-        | type                   | O        | “add-on” or “theme”
-        | name                   | O        | Complete name of the extension
-        | version                | O        | Version of the extension
-        | tagline                | O        | One-line short description, up to 64 characters - cannot end with punctuation
-        | tags                   | X        | Pick tags based on type
-        | website                | X        | Website for the extension
-        | license                | O        | List of licenses, use SPDX license identifier
-        | copyright              | X        | Some licenses require a copyright, copyrights must be “Year Name” or “Year-Year Name”
-        | blender_version_min    | O        | Minimum supported Blender version - use at least 4.2.0
-        | blender_version_max    | X        | Blender version that the extension does not support, earlier versions are supported
-        | permissions            | X        | Options : files, network, clipboard, camera, microphone. Each permission followed by explanation (short single-sentence, up to 64 characters, with no end punctuation)
-        | platforms              | X        | List of supported platforms. If omitted, the extension will be available in all operating systems
-        | wheels                 | X        | List of relative file-paths Python Wheels
-        | paths                  | X        | A list of file-paths relative to the manifest to include when building the package
-        | paths_exclude_pattern  | X        | List of string, the pattern matching is compatible with gitignore
+        | schema_version         | O        |           | Internal version of the file format - use 1.0.0
+        | id                     | O        | Extension | Unique identifier for the extension
+        | type                   | O        | Extension | “add-on” or “theme”
+        | name                   | O        | Extension | Complete name of the extension
+        | tagline                | O        | Extension | One-line short description, up to 64 characters - cannot end with punctuation
+        | tags                   | X        | Extension | Pick tags based on type
+        | maintainer             | O        | Developer | Developer name <email@address.com>
+        | website                | X        | Developer | Website for the extension
+        | license                | O        | License   | List of licenses, use SPDX license identifier
+        | copyright              | X        | License   | Some licenses require a copyright, copyrights must be “Year Name” or “Year-Year Name”
+        | version                | O        | Version   | Version of the extension
+        | blender_version_min    | O        | Version   | Minimum supported Blender version - use at least 4.2.0
+        | blender_version_max    | X        | Version   | Blender version that the extension does not support, earlier versions are supported
+        | permissions            | X        | Build     | Options : files, network, clipboard, camera, microphone. Each permission followed by explanation (short single-sentence, up to 64 characters, with no end punctuation)
+        | platforms              | X        | Build     | List of supported platforms. If omitted, the extension will be available in all operating systems
+        | wheels                 | X        | Build     | List of relative file-paths Python Wheels
+        | paths                  | X        | Build     | A list of file-paths relative to the manifest to include when building the package
+        | paths_exclude_pattern  | X        | Build     | List of string, the pattern matching is compatible with gitignore
         |--------------------------------------------------------------------------------------------------------------------------------------------
 '''
 
@@ -62,7 +61,7 @@ from pathlib import Path
 from collections.abc import Iterable
 import tkinter as tk
 from tkinter import ttk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog
 import requests
 from bs4 import BeautifulSoup
 
@@ -198,9 +197,14 @@ does_file_name_match_with_ext = lambda file_path, file_name: is_path(file_path) 
 
 # --- Section 1 --- #
 
-WIG__BLENDER_EXE = None
 VAR__BLENDER_EXE = None
+WIG__BLENDER_EXE = None
 
+VAR__SOURCE_DIR = None
+WIG__SOURCE_DIR = None
+
+VAR__BUILD_DIR = None
+WIG__BUILD_DIR = None
 
 # --- Section 2 --- #
 # --- Section 3 --- #
@@ -410,6 +414,56 @@ def blender_exe_btn_CB():
         widget.delete(0, tk.END)
         widget.insert(0, file_path)
 
+
+def source_dir_entry_CB(event):
+    value = VAR__SOURCE_DIR.get()
+    widget = WIG__SOURCE_DIR
+    if value:
+        if is_dir(value):
+            print(f"Valid Path : {value}")
+        else:
+            print(f"Invalid Path : {value}")
+            widget.delete(0, tk.END)
+            widget.insert(0, "Invalid")
+    else:
+        print("No path entered.")
+        widget.delete(0, tk.END)
+        widget.insert(0, "Invalid")
+
+
+def source_dir_btn_CB():
+    widget = WIG__SOURCE_DIR
+    folder_dir = filedialog.askdirectory(title="Select Source Folder")
+    print(f"Selected Directory : {folder_dir}")
+    if folder_dir and is_dir(folder_dir):
+        widget.delete(0, tk.END)
+        widget.insert(0, folder_dir)
+
+
+def build_dir_entry_CB(event):
+    value = VAR__BUILD_DIR.get()
+    widget = WIG__BUILD_DIR
+    if value:
+        if is_dir(value):
+            print(f"Valid Path : {value}")
+        else:
+            print(f"Invalid Path : {value}")
+            widget.delete(0, tk.END)
+            widget.insert(0, "Invalid")
+    else:
+        print("No path entered.")
+        widget.delete(0, tk.END)
+        widget.insert(0, "Invalid")
+
+
+def build_dir_btn_CB():
+    widget = WIG__BUILD_DIR
+    folder_dir = filedialog.askdirectory(title="Select Source Folder")
+    print(f"Selected Directory : {folder_dir}")
+    if folder_dir and is_dir(folder_dir):
+        widget.delete(0, tk.END)
+        widget.insert(0, folder_dir)
+
 # --- Section 2 --- #
 # --- Section 3 --- #
 # --- Section 4 --- #
@@ -424,35 +478,68 @@ def blender_exe_btn_CB():
 def build_section_1_PATHS(frame):
     ''' Blender.exe | Source | Build '''
 
-    # Blender Exe Path
-    global WIG__BLENDER_EXE, VAR__BLENDER_EXE
+    # Configure Frame
+    frame.grid_columnconfigure(0, weight=1)
+    frame.grid_columnconfigure(1, weight=5)
+    frame.grid_columnconfigure(2, weight=1)
+
+    # Blender Exe
+    global VAR__BLENDER_EXE, WIG__BLENDER_EXE
     # Var
     VAR__BLENDER_EXE = tk.StringVar(value="")
     # Label
-    label = tk.Label(frame, text="Blender")
-    label.pack(side=tk.LEFT, padx=5)
+    label = tk.Label(frame, text="Blender Path")
+    label.grid(row=0, column=0, sticky="w", padx=5)
     # Entry
     WIG__BLENDER_EXE = tk.Entry(frame, textvariable=VAR__BLENDER_EXE)
-    WIG__BLENDER_EXE.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=5)
+    WIG__BLENDER_EXE.grid(row=0, column=1, sticky="we", padx=5)
     WIG__BLENDER_EXE.bind("<Return>", blender_exe_entry_CB)
     # Button
-    button = tk.Button(frame, text="Open Executable", command=blender_exe_btn_CB)
-    button.pack(side=tk.LEFT, padx=5)
+    button = tk.Button(frame, text="Open", command=blender_exe_btn_CB)
+    button.grid(row=0, column=2, sticky="e", padx=5)
 
+    # Soure Directory
+    global VAR__SOURCE_DIR, WIG__SOURCE_DIR
+    # Var
+    VAR__SOURCE_DIR = tk.StringVar(value="")
+    # Label
+    label = tk.Label(frame, text="Source Directory")
+    label.grid(row=1, column=0, sticky="w", padx=5)
+    # Entry
+    WIG__SOURCE_DIR = tk.Entry(frame, textvariable=VAR__SOURCE_DIR)
+    WIG__SOURCE_DIR.grid(row=1, column=1, sticky="we", padx=5)
+    WIG__SOURCE_DIR.bind("<Return>", source_dir_entry_CB)
+    # Button
+    button = tk.Button(frame, text="Open", command=source_dir_btn_CB)
+    button.grid(row=1, column=2, sticky="e", padx=5)
 
+    # Build Directory
+    global VAR__BUILD_DIR, WIG__BUILD_DIR
+    # Var
+    VAR__BUILD_DIR = tk.StringVar(value="")
+    # Label
+    label = tk.Label(frame, text="Build Directory")
+    label.grid(row=2, column=0, sticky="w", padx=5)
+    # Entry
+    WIG__BUILD_DIR = tk.Entry(frame, textvariable=VAR__BUILD_DIR)
+    WIG__BUILD_DIR.grid(row=2, column=1, sticky="we", padx=5)
+    WIG__BUILD_DIR.bind("<Return>", source_dir_entry_CB)
+    # Button
+    button = tk.Button(frame, text="Open", command=source_dir_btn_CB)
+    button.grid(row=2, column=2, sticky="e", padx=5)
 
 
 @try_except_decorator
 def build_section_2_INFO(frame):
     ''' Extension | Versions | Developer | License | Build '''
 
-    # Notebook
-    notebook = ttk.Notebook(frame)
-    notebook.grid(row=0, column=0, sticky="nsew")
-
     # Configure
     frame.grid_rowconfigure(0, weight=1)
     frame.grid_columnconfigure(0, weight=1)
+
+    # Notebook
+    notebook = ttk.Notebook(frame)
+    notebook.grid(row=0, column=0, sticky="nsew")
 
     # Extension
     ext_tab = tk.Frame(notebook)
@@ -549,17 +636,13 @@ def create_sections():
     APP_ROOT.grid_columnconfigure(0, weight=1)
     APP_ROOT.grid_rowconfigure(0, weight=1)
 
-    # Colors
-    color_a = "lightgray"
-    color_b = "white"
-
     # Create frames
-    frame_1 = tk.Frame(APP_ROOT, padx=2, pady=2, bg=color_a)
-    frame_2 = tk.Frame(APP_ROOT, padx=2, pady=2, bg=color_b)
-    frame_3 = tk.Frame(APP_ROOT, padx=2, pady=2, bg=color_a)
-    frame_4 = tk.Frame(APP_ROOT, padx=2, pady=2, bg=color_b)
-    frame_5 = tk.Frame(APP_ROOT, padx=2, pady=2, bg=color_a)
-    frame_6 = tk.Frame(APP_ROOT, padx=2, pady=2, bg=color_b)
+    frame_1 = tk.Frame(APP_ROOT, padx=2, pady=2)
+    frame_2 = tk.Frame(APP_ROOT, padx=2, pady=2)
+    frame_3 = tk.Frame(APP_ROOT, padx=2, pady=2)
+    frame_4 = tk.Frame(APP_ROOT, padx=2, pady=2)
+    frame_5 = tk.Frame(APP_ROOT, padx=2, pady=2)
+    frame_6 = tk.Frame(APP_ROOT, padx=2, pady=2)
 
     # Rows
     frame_1.grid(row=0, column=0, sticky="nsew")
@@ -596,116 +679,50 @@ if __name__ == "__main__":
         print("Setup Failed")
 
 
-class FilePickController:
-    def __init__(self, parent, label="Blender", file_types=(("All Files", "*.*"),)):
-        self.frame = tk.Frame(parent, padx=2, pady=2, borderwidth=1, relief="solid")
-        self.frame.pack(fill=tk.X)
-        self.file_types = file_types
-        
-        # Label
-        self.label = tk.Label(self.frame, text=label)
-        self.label.pack(side=tk.LEFT, padx=5)
-        
-        # Entry field
-        self.entry = tk.Entry(self.frame)
-        self.entry.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=5)
 
-        # Button to open file dialog
-        self.button = tk.Button(self.frame, text="Open Executable", command=self.open_file_dialog)
-        self.button.pack(side=tk.LEFT, padx=5)
+# class VerController:
+#     def __init__(self, parent, label="Version", min_ver=(0,0,0), add_use_check=False):
+#         self.frame = tk.Frame(parent, padx=2, pady=2, borderwidth=1, relief="solid")
+#         self.frame.pack(fill=tk.X)
 
-        # Bind the FocusOut event to check validity
-        self.entry.bind("<FocusOut>", self.on_focus_out)
+#         self.var_major = tk.IntVar(value=min_ver[0])
+#         self.var_minor = tk.IntVar(value=min_ver[1])
+#         self.var_patch = tk.IntVar(value=min_ver[2])
+#         self.var_use   = None
+#         if add_use_check:
+#             self.var_use = tk.BooleanVar(value=False)
 
-    def open_file_dialog(self):
-        # Open file dialog to select an executable file
-        file_path = filedialog.askopenfilename(title="Select an Executable File", filetypes=self.file_types)
-        
-        if file_path:
-            # Insert selected file path into the entry
-            self.entry.delete(0, tk.END)
-            self.entry.insert(0, file_path)
+#         self.label = tk.Label(self.frame, text=label)
+#         self.spin_major = tk.Spinbox(self.frame, from_=min_ver[0], to=sys.maxsize, textvariable=self.var_major, width=5)
+#         self.spin_minor = tk.Spinbox(self.frame, from_=min_ver[1], to=sys.maxsize, textvariable=self.var_minor, width=5)
+#         self.spin_patch = tk.Spinbox(self.frame, from_=min_ver[2], to=sys.maxsize, textvariable=self.var_patch, width=5)
+#         self.check_box = None
+#         if add_use_check:
+#             self.check_box = tk.Checkbutton(self.frame, text='Use', variable=self.var_use, command=self.com_check_box, width=5)
 
-    def on_focus_out(self, event):
-        # Get the value from the entry field
-        entered_value = self.entry.get()
-        
-        # Check if the entered value is a valid executable file (basic check)
-        if entered_value:
-            if os.path.isfile(entered_value) and os.access(entered_value, os.X_OK):
-                print(f"Valid executable: {entered_value}")
-            else:
-                print("Invalid executable file!")
-                self.entry.delete(0, tk.END)  # Optionally clear the entry if invalid
-                self.entry.insert(0, "Invalid executable")
-        else:
-            print("No path entered.")
-            self.entry.delete(0, tk.END)  # Optionally clear the entry if no path entered
-            self.entry.insert(0, "No path entered")
+#         self.label.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+#         if add_use_check:
+#             self.check_box.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+#         else:
+#             self.spin_major.pack(side=tk.LEFT, expand=False, fill=tk.BOTH)
+#             self.spin_minor.pack(side=tk.LEFT, expand=False, fill=tk.BOTH)
+#             self.spin_patch.pack(side=tk.LEFT, expand=False, fill=tk.BOTH)
 
 
-class VerController:
-    def __init__(self, parent, label="Version", min_ver=(0,0,0), add_use_check=False):
-        self.frame = tk.Frame(parent, padx=2, pady=2, borderwidth=1, relief="solid")
-        self.frame.pack(fill=tk.X)
-
-        self.var_major = tk.IntVar(value=min_ver[0])
-        self.var_minor = tk.IntVar(value=min_ver[1])
-        self.var_patch = tk.IntVar(value=min_ver[2])
-        self.var_use   = None
-        if add_use_check:
-            self.var_use = tk.BooleanVar(value=False)
-
-        self.label = tk.Label(self.frame, text=label)
-        self.spin_major = tk.Spinbox(self.frame, from_=min_ver[0], to=sys.maxsize, textvariable=self.var_major, width=5)
-        self.spin_minor = tk.Spinbox(self.frame, from_=min_ver[1], to=sys.maxsize, textvariable=self.var_minor, width=5)
-        self.spin_patch = tk.Spinbox(self.frame, from_=min_ver[2], to=sys.maxsize, textvariable=self.var_patch, width=5)
-        self.check_box = None
-        if add_use_check:
-            self.check_box = tk.Checkbutton(self.frame, text='Use', variable=self.var_use, command=self.com_check_box, width=5)
-
-        self.label.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
-        if add_use_check:
-            self.check_box.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
-        else:
-            self.spin_major.pack(side=tk.LEFT, expand=False, fill=tk.BOTH)
-            self.spin_minor.pack(side=tk.LEFT, expand=False, fill=tk.BOTH)
-            self.spin_patch.pack(side=tk.LEFT, expand=False, fill=tk.BOTH)
+#     def com_check_box(self):
+#         if self.var_use.get():
+#             self.spin_major.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+#             self.spin_minor.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+#             self.spin_patch.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+#         else:
+#             self.spin_major.pack_forget()
+#             self.spin_minor.pack_forget()
+#             self.spin_patch.pack_forget()
 
 
-    def com_check_box(self):
-        if self.var_use.get():
-            self.spin_major.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
-            self.spin_minor.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
-            self.spin_patch.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
-        else:
-            self.spin_major.pack_forget()
-            self.spin_minor.pack_forget()
-            self.spin_patch.pack_forget()
-
-
-    def get_version(self):
-        # Check box is not used
-        if self.check_box and self.var_use and not self.var_use.get():
-            return None
-        # Valid
-        return (self.var_major.get(), self.var_minor.get(), self.var_patch.get())
-
-
-class App:
-    def __init__(self, root):
-        self.root = root
-        self.frame = tk.Frame(root)
-        self.frame.pack(padx=5, pady=5, side=tk.LEFT, fill=tk.Y)
-
-        # Blender Path
-        self.blender_file_picker = FilePickController(
-            self.frame, 
-            label="Blender Executable", 
-            file_types=(("Executable Files", "*.exe"), ("All Files", "*.*"))
-        )
-
-        # Versions
-        self.ext_version = VerController(self.frame, label="Extension Version")
-        self.b3d_ver_min = VerController(self.frame, label="Blender Version Min", min_ver=(4,2,0))
-        self.b3d_ver_max = VerController(self.frame, label="Blender Version Max", min_ver=(4,2,0), add_use_check=True)
+#     def get_version(self):
+#         # Check box is not used
+#         if self.check_box and self.var_use and not self.var_use.get():
+#             return None
+#         # Valid
+#         return (self.var_major.get(), self.var_minor.get(), self.var_patch.get())
