@@ -3,27 +3,48 @@
 ########################•########################
 
 '''
-______LICENSE______
-GNU GENERAL PUBLIC LICENSE
+    ___ LICENSE ___
+        GNU GENERAL PUBLIC LICENSE
 
-______DISCLAIMER______
-This software is provided "as is" without any warranties, express or implied. 
-Use at your own risk. The author is not responsible for any damage, data loss, 
-or issues arising from the use of this code.
+    ___ DISCLAIMER ___
+        This software is provided "as is" without any warranties, express or implied. 
+        Use at your own risk. The author is not responsible for any damage, data loss, 
+        or issues arising from the use of this code.
 
-______USAGE______
-Run python script from system terminal
->python build_tool.py
-Use the GUI interface to set the Directories and Extension Settings
-Press Build to generate the build folder, write the manifest file and process the build commands
+    ___ USAGE ___
+        Run python script from system terminal
+        >python build_tool.py
+        Use the GUI interface to set the Directories and Extension Settings
+        Press Build to generate the build folder, write the manifest file and process the build commands
 
-______LEGEND______
-PATH = Full file path with extension
-DIR  = Directory only
-EXE  = Executable File
-MANI = Manifest
-VER  = Version
-DEV  = Developer
+    ___ Tkinter ___
+        ttk = "Themed" Tk
+        ttk widgets = Button, Checkbutton, Entry, Frame, Label, LabelFrame, Menubutton, PanedWindow, Radiobutton, Scale, Scrollbar, Spinbox, Combobox, Notebook, Progressbar, Separator, Sizegrip, Treeview
+
+
+    ___ Manifest File Layout ___
+        |--------------------------------------------------------------------------------------------------------------------------------------------
+        | Blender                | Required | Notes
+        |--------------------------------------------------------------------------------------------------------------------------------------------
+        | schema_version         | O        | Internal version of the file format - use 1.0.0
+        | maintainer             | O        | Developer name <email@address.com>
+        | id                     | O        | Unique identifier for the extension
+        | type                   | O        | “add-on” or “theme”
+        | name                   | O        | Complete name of the extension
+        | version                | O        | Version of the extension
+        | tagline                | O        | One-line short description, up to 64 characters - cannot end with punctuation
+        | tags                   | X        | Pick tags based on type
+        | website                | X        | Website for the extension
+        | license                | O        | List of licenses, use SPDX license identifier
+        | copyright              | X        | Some licenses require a copyright, copyrights must be “Year Name” or “Year-Year Name”
+        | blender_version_min    | O        | Minimum supported Blender version - use at least 4.2.0
+        | blender_version_max    | X        | Blender version that the extension does not support, earlier versions are supported
+        | permissions            | X        | Options : files, network, clipboard, camera, microphone. Each permission followed by explanation (short single-sentence, up to 64 characters, with no end punctuation)
+        | platforms              | X        | List of supported platforms. If omitted, the extension will be available in all operating systems
+        | wheels                 | X        | List of relative file-paths Python Wheels
+        | paths                  | X        | A list of file-paths relative to the manifest to include when building the package
+        | paths_exclude_pattern  | X        | List of string, the pattern matching is compatible with gitignore
+        |--------------------------------------------------------------------------------------------------------------------------------------------
 '''
 
 ########################•########################
@@ -42,663 +63,27 @@ from collections.abc import Iterable
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog, messagebox
+import requests
+from bs4 import BeautifulSoup
+
+########################•########################
+"""                 DECORATORS                """
+########################•########################
+
+def try_except_decorator(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            print(f"ERROR : {func.__name__}()")
+            traceback.print_exc()
+    return wrapper
 
 ########################•########################
 """                   OPTIONS                 """
 ########################•########################
 
-'''  DONT FORGET PREFIX ----> SPDX:  '''
-
-LICENSES = {
-    "BSD Zero Clause License"                                                                   : "0BSD",
-    "3D Slicer License v1.0"                                                                    : "3D-Slicer-1.0",
-    "Attribution Assurance License"                                                             : "AAL",
-    "Abstyles License"                                                                          : "Abstyles",
-    "AdaCore Doc License"                                                                       : "AdaCore-doc",
-    "Adobe Systems Incorporated Source Code License Agreement"                                  : "Adobe-2006",
-    "Adobe Display PostScript License"                                                          : "Adobe-Display-PostScript",
-    "Adobe Glyph List License"                                                                  : "Adobe-Glyph",
-    "Adobe Utopia Font License"                                                                 : "Adobe-Utopia",
-    "Amazon Digital Services License"                                                           : "ADSL",
-    "Academic Free License v1.1"                                                                : "AFL-1.1",
-    "Academic Free License v1.2"                                                                : "AFL-1.2",
-    "Academic Free License v2.0"                                                                : "AFL-2.0",
-    "Academic Free License v2.1"                                                                : "AFL-2.1",
-    "Academic Free License v3.0"                                                                : "AFL-3.0",
-    "Afmparse License"                                                                          : "Afmparse",
-    "Affero General Public License v1.0 only"                                                   : "AGPL-1.0-only",
-    "Affero General Public License v1.0 or later"                                               : "AGPL-1.0-or-later",
-    "GNU Affero General Public License v3.0 only"                                               : "AGPL-3.0-only",
-    "GNU Affero General Public License v3.0 or later"                                           : "AGPL-3.0-or-later",
-    "Aladdin Free Public License"                                                               : "Aladdin",
-    "AMD newlib License"                                                                        : "AMD-newlib",
-    "AMD's plpa_map.c License"                                                                  : "AMDPLPA",
-    "Apple MIT License"                                                                         : "AML",
-    "AML glslang variant License"                                                               : "AML-glslang",
-    "Academy of Motion Picture Arts and Sciences BSD"                                           : "AMPAS",
-    "ANTLR Software Rights Notice"                                                              : "ANTLR-PD",
-    "ANTLR Software Rights Notice with license fallback"                                        : "ANTLR-PD-fallback",
-    "Any OSI License"                                                                           : "any-OSI",
-    "Any OSI License - Perl Modules"                                                            : "any-OSI-perl-modules",
-    "Apache License 1.0"                                                                        : "Apache-1.0",
-    "Apache License 1.1"                                                                        : "Apache-1.1",
-    "Apache License 2.0"                                                                        : "Apache-2.0",
-    "Adobe Postscript AFM License"                                                              : "APAFML",
-    "Adaptive Public License 1.0"                                                               : "APL-1.0",
-    "App::s2p License"                                                                          : "App-s2p",
-    "Apple Public Source License 1.0"                                                           : "APSL-1.0",
-    "Apple Public Source License 1.1"                                                           : "APSL-1.1",
-    "Apple Public Source License 1.2"                                                           : "APSL-1.2",
-    "Apple Public Source License 2.0"                                                           : "APSL-2.0",
-    "Arphic Public License"                                                                     : "Arphic-1999",
-    "Artistic License 1.0"                                                                      : "Artistic-1.0",
-    "Artistic License 1.0 w/clause 8"                                                           : "Artistic-1.0-cl8",
-    "Artistic License 1.0 (Perl)"                                                               : "Artistic-1.0-Perl",
-    "Artistic License 2.0"                                                                      : "Artistic-2.0",
-    "ASWF Digital Assets License version 1.0"                                                   : "ASWF-Digital-Assets-1.0",
-    "ASWF Digital Assets License 1.1"                                                           : "ASWF-Digital-Assets-1.1",
-    "Baekmuk License"                                                                           : "Baekmuk",
-    "Bahyph License"                                                                            : "Bahyph",
-    "Barr License"                                                                              : "Barr",
-    "bcrypt Solar Designer License"                                                             : "bcrypt-Solar-Designer",
-    "Beerware License"                                                                          : "Beerware",
-    "Bitstream Charter Font License"                                                            : "Bitstream-Charter",
-    "Bitstream Vera Font License"                                                               : "Bitstream-Vera",
-    "BitTorrent Open Source License v1.0"                                                       : "BitTorrent-1.0",
-    "BitTorrent Open Source License v1.1"                                                       : "BitTorrent-1.1",
-    "SQLite Blessing"                                                                           : "blessing",
-    "Blue Oak Model License 1.0.0"                                                              : "BlueOak-1.0.0",
-    "Boehm-Demers-Weiser GC License"                                                            : "Boehm-GC",
-    "Boehm-Demers-Weiser GC License (without fee)"                                              : "Boehm-GC-without-fee",
-    "Borceux license"                                                                           : "Borceux",
-    "Brian Gladman 2-Clause License"                                                            : "Brian-Gladman-2-Clause",
-    "Brian Gladman 3-Clause License"                                                            : "Brian-Gladman-3-Clause",
-    "BSD 1-Clause License"                                                                      : "BSD-1-Clause",
-    "BSD 2-Clause Simplified License"                                                           : "BSD-2-Clause",
-    "BSD 2-Clause - Ian Darwin variant"                                                         : "BSD-2-Clause-Darwin",
-    "BSD 2-Clause - first lines requirement"                                                    : "BSD-2-Clause-first-lines",
-    "BSD-2-Clause Plus Patent License"                                                          : "BSD-2-Clause-Patent",
-    "BSD 2-Clause with views sentence"                                                          : "BSD-2-Clause-Views",
-    "BSD 3-Clause New or Revised License"                                                       : "BSD-3-Clause",
-    "BSD 3-Clause acpica variant"                                                               : "BSD-3-Clause-acpica",
-    "BSD with attribution"                                                                      : "BSD-3-Clause-Attribution",
-    "BSD 3-Clause Clear License"                                                                : "BSD-3-Clause-Clear",
-    "BSD 3-Clause Flex variant"                                                                 : "BSD-3-Clause-flex",
-    "Hewlett-Packard BSD variant license"                                                       : "BSD-3-Clause-HP",
-    "Lawrence Berkeley National Labs BSD variant license"                                       : "BSD-3-Clause-LBNL",
-    "BSD 3-Clause Modification"                                                                 : "BSD-3-Clause-Modification",
-    "BSD 3-Clause No Military License"                                                          : "BSD-3-Clause-No-Military-License",
-    "BSD 3-Clause No Nuclear License"                                                           : "BSD-3-Clause-No-Nuclear-License",
-    "BSD 3-Clause No Nuclear License 2014"                                                      : "BSD-3-Clause-No-Nuclear-License-2014",
-    "BSD 3-Clause No Nuclear Warranty"                                                          : "BSD-3-Clause-No-Nuclear-Warranty",
-    "BSD 3-Clause Open MPI variant"                                                             : "BSD-3-Clause-Open-MPI",
-    "BSD 3-Clause Sun Microsystems"                                                             : "BSD-3-Clause-Sun",
-    "BSD 4-Clause Original or Old License"                                                      : "BSD-4-Clause",
-    "BSD 4 Clause Shortened"                                                                    : "BSD-4-Clause-Shortened",
-    "BSD-4-Clause (University of California-Specific)"                                          : "BSD-4-Clause-UC",
-    "BSD 4.3 RENO License"                                                                      : "BSD-4.3RENO",
-    "BSD 4.3 TAHOE License"                                                                     : "BSD-4.3TAHOE",
-    "BSD Advertising Acknowledgement License"                                                   : "BSD-Advertising-Acknowledgement",
-    "BSD with Attribution and HPND disclaimer"                                                  : "BSD-Attribution-HPND-disclaimer",
-    "BSD-Inferno-Nettverk"                                                                      : "BSD-Inferno-Nettverk",
-    "BSD Protection License"                                                                    : "BSD-Protection",
-    "BSD Source Code Attribution - beginning of file variant"                                   : "BSD-Source-beginning-file",
-    "BSD Source Code Attribution"                                                               : "BSD-Source-Code",
-    "Systemics BSD variant license"                                                             : "BSD-Systemics",
-    "Systemics W3Works BSD variant license"                                                     : "BSD-Systemics-W3Works",
-    "Boost Software License 1.0"                                                                : "BSL-1.0",
-    "Business Source License 1.1"                                                               : "BUSL-1.1",
-    "bzip2 and libbzip2 License v1.0.6"                                                         : "bzip2-1.0.6",
-    "Computational Use of Data Agreement v1.0"                                                  : "C-UDA-1.0",
-    "Cryptographic Autonomy License 1.0"                                                        : "CAL-1.0",
-    "Cryptographic Autonomy License 1.0 (Combined Work Exception)"                              : "CAL-1.0-Combined-Work-Exception",
-    "Caldera License"                                                                           : "Caldera",
-    "Caldera License (without preamble)"                                                        : "Caldera-no-preamble",
-    "Catharon License"                                                                          : "Catharon",
-    "Computer Associates Trusted Open Source License 1.1"                                       : "CATOSL-1.1",
-    "Creative Commons Attribution 1.0 Generic"                                                  : "CC-BY-1.0",
-    "Creative Commons Attribution 2.0 Generic"                                                  : "CC-BY-2.0",
-    "Creative Commons Attribution 2.5 Generic"                                                  : "CC-BY-2.5",
-    "Creative Commons Attribution 2.5 Australia"                                                : "CC-BY-2.5-AU",
-    "Creative Commons Attribution 3.0 Unported"                                                 : "CC-BY-3.0",
-    "Creative Commons Attribution 3.0 Austria"                                                  : "CC-BY-3.0-AT",
-    "Creative Commons Attribution 3.0 Australia"                                                : "CC-BY-3.0-AU",
-    "Creative Commons Attribution 3.0 Germany"                                                  : "CC-BY-3.0-DE",
-    "Creative Commons Attribution 3.0 IGO"                                                      : "CC-BY-3.0-IGO",
-    "Creative Commons Attribution 3.0 Netherlands"                                              : "CC-BY-3.0-NL",
-    "Creative Commons Attribution 3.0 United States"                                            : "CC-BY-3.0-US",
-    "Creative Commons Attribution 4.0 International"                                            : "CC-BY-4.0",
-    "Creative Commons Attribution Non Commercial 1.0 Generic"                                   : "CC-BY-NC-1.0",
-    "Creative Commons Attribution Non Commercial 2.0 Generic"                                   : "CC-BY-NC-2.0",
-    "Creative Commons Attribution Non Commercial 2.5 Generic"                                   : "CC-BY-NC-2.5",
-    "Creative Commons Attribution Non Commercial 3.0 Unported"                                  : "CC-BY-NC-3.0",
-    "Creative Commons Attribution Non Commercial 3.0 Germany"                                   : "CC-BY-NC-3.0-DE",
-    "Creative Commons Attribution Non Commercial 4.0 International"                             : "CC-BY-NC-4.0",
-    "Creative Commons Attribution Non Commercial No Derivatives 1.0 Generic"                    : "CC-BY-NC-ND-1.0",
-    "Creative Commons Attribution Non Commercial No Derivatives 2.0 Generic"                    : "CC-BY-NC-ND-2.0",
-    "Creative Commons Attribution Non Commercial No Derivatives 2.5 Generic"                    : "CC-BY-NC-ND-2.5",
-    "Creative Commons Attribution Non Commercial No Derivatives 3.0 Unported"                   : "CC-BY-NC-ND-3.0",
-    "Creative Commons Attribution Non Commercial No Derivatives 3.0 Germany"                    : "CC-BY-NC-ND-3.0-DE",
-    "Creative Commons Attribution Non Commercial No Derivatives 3.0 IGO"                        : "CC-BY-NC-ND-3.0-IGO",
-    "Creative Commons Attribution Non Commercial No Derivatives 4.0 International"              : "CC-BY-NC-ND-4.0",
-    "Creative Commons Attribution Non Commercial Share Alike 1.0 Generic"                       : "CC-BY-NC-SA-1.0",
-    "Creative Commons Attribution Non Commercial Share Alike 2.0 Generic"                       : "CC-BY-NC-SA-2.0",
-    "Creative Commons Attribution Non Commercial Share Alike 2.0 Germany"                       : "CC-BY-NC-SA-2.0-DE",
-    "Creative Commons Attribution-NonCommercial-ShareAlike 2.0 France"                          : "CC-BY-NC-SA-2.0-FR",
-    "Creative Commons Attribution Non Commercial Share Alike 2.0 England and Wales"             : "CC-BY-NC-SA-2.0-UK",
-    "Creative Commons Attribution Non Commercial Share Alike 2.5 Generic"                       : "CC-BY-NC-SA-2.5",
-    "Creative Commons Attribution Non Commercial Share Alike 3.0 Unported"                      : "CC-BY-NC-SA-3.0",
-    "Creative Commons Attribution Non Commercial Share Alike 3.0 Germany"                       : "CC-BY-NC-SA-3.0-DE",
-    "Creative Commons Attribution Non Commercial Share Alike 3.0 IGO"                           : "CC-BY-NC-SA-3.0-IGO",
-    "Creative Commons Attribution Non Commercial Share Alike 4.0 International"                 : "CC-BY-NC-SA-4.0",
-    "Creative Commons Attribution No Derivatives 1.0 Generic"                                   : "CC-BY-ND-1.0",
-    "Creative Commons Attribution No Derivatives 2.0 Generic"                                   : "CC-BY-ND-2.0",
-    "Creative Commons Attribution No Derivatives 2.5 Generic"                                   : "CC-BY-ND-2.5",
-    "Creative Commons Attribution No Derivatives 3.0 Unported"                                  : "CC-BY-ND-3.0",
-    "Creative Commons Attribution No Derivatives 3.0 Germany"                                   : "CC-BY-ND-3.0-DE",
-    "Creative Commons Attribution No Derivatives 4.0 International"                             : "CC-BY-ND-4.0",
-    "Creative Commons Attribution Share Alike 1.0 Generic"                                      : "CC-BY-SA-1.0",
-    "Creative Commons Attribution Share Alike 2.0 Generic"                                      : "CC-BY-SA-2.0",
-    "Creative Commons Attribution Share Alike 2.0 England and Wales"                            : "CC-BY-SA-2.0-UK",
-    "Creative Commons Attribution Share Alike 2.1 Japan"                                        : "CC-BY-SA-2.1-JP",
-    "Creative Commons Attribution Share Alike 2.5 Generic"                                      : "CC-BY-SA-2.5",
-    "Creative Commons Attribution Share Alike 3.0 Unported"                                     : "CC-BY-SA-3.0",
-    "Creative Commons Attribution Share Alike 3.0 Austria"                                      : "CC-BY-SA-3.0-AT",
-    "Creative Commons Attribution Share Alike 3.0 Germany"                                      : "CC-BY-SA-3.0-DE",
-    "Creative Commons Attribution-ShareAlike 3.0 IGO"                                           : "CC-BY-SA-3.0-IGO",
-    "Creative Commons Attribution Share Alike 4.0 International"                                : "CC-BY-SA-4.0",
-    "Creative Commons Public Domain Dedication and Certification"                               : "CC-PDDC",
-    "Creative    Commons Public Domain Mark 1.0 Universal"                                      : "CC-PDM-1.0",
-    "Creative Commons Share Alike 1.0 Generic"                                                  : "CC-SA-1.0",
-    "Creative Commons Zero v1.0 Universal"                                                      : "CC0-1.0",
-    "Common Development and Distribution License 1.0"                                           : "CDDL-1.0",
-    "Common Development and Distribution License 1.1"                                           : "CDDL-1.1",
-    "Common Documentation License 1.0"                                                          : "CDL-1.0",
-    "Community Data License Agreement Permissive 1.0"                                           : "CDLA-Permissive-1.0",
-    "Community Data License Agreement Permissive 2.0"                                           : "CDLA-Permissive-2.0",
-    "Community Data License Agreement Sharing 1.0"                                              : "CDLA-Sharing-1.0",
-    "CeCILL Free Software License Agreement v1.0"                                               : "CECILL-1.0",
-    "CeCILL Free Software License Agreement v1.1"                                               : "CECILL-1.1",
-    "CeCILL Free Software License Agreement v2.0"                                               : "CECILL-2.0",
-    "CeCILL Free Software License Agreement v2.1"                                               : "CECILL-2.1",
-    "CeCILL-B Free Software License Agreement"                                                  : "CECILL-B",
-    "CeCILL-C Free Software License Agreement"                                                  : "CECILL-C",
-    "CERN Open Hardware Licence v1.1"                                                           : "CERN-OHL-1.1",
-    "CERN Open Hardware Licence v1.2"                                                           : "CERN-OHL-1.2",
-    "CERN Open Hardware Licence Version 2 - Permissive"                                         : "CERN-OHL-P-2.0",
-    "CERN Open Hardware Licence Version 2 - Strongly Reciprocal"                                : "CERN-OHL-S-2.0",
-    "CERN Open Hardware Licence Version 2 - Weakly Reciprocal"                                  : "CERN-OHL-W-2.0",
-    "CFITSIO License"                                                                           : "CFITSIO",
-    "check-cvs License"                                                                         : "check-cvs",
-    "Checkmk License"                                                                           : "checkmk",
-    "Clarified Artistic License"                                                                : "ClArtistic",
-    "Clips License"                                                                             : "Clips",
-    "CMU Mach License"                                                                          : "CMU-Mach",
-    "CMU    Mach - no notices-in-documentation variant"                                         : "CMU-Mach-nodoc",
-    "CNRI Jython License"                                                                       : "CNRI-Jython",
-    "CNRI Python License"                                                                       : "CNRI-Python",
-    "CNRI Python Open Source GPL Compatible License Agreement"                                  : "CNRI-Python-GPL-Compatible",
-    "Copyfree Open Innovation License"                                                          : "COIL-1.0",
-    "Community Specification License 1.0"                                                       : "Community-Spec-1.0",
-    "Condor Public License v1.1"                                                                : "Condor-1.1",
-    "copyleft-next 0.3.0"                                                                       : "copyleft-next-0.3.0",
-    "copyleft-next 0.3.1"                                                                       : "copyleft-next-0.3.1",
-    "Cornell Lossless JPEG License"                                                             : "Cornell-Lossless-JPEG",
-    "Common Public Attribution License 1.0"                                                     : "CPAL-1.0",
-    "Common Public License 1.0"                                                                 : "CPL-1.0",
-    "Code Project Open License 1.02"                                                            : "CPOL-1.02",
-    "Cronyx License"                                                                            : "Cronyx",
-    "Crossword License"                                                                         : "Crossword",
-    "CrystalStacker License"                                                                    : "CrystalStacker",
-    "CUA Office Public License v1.0"                                                            : "CUA-OPL-1.0",
-    "Cube License"                                                                              : "Cube",
-    "curl License"                                                                              : "curl",
-    "Common Vulnerability Enumeration ToU License"                                              : "cve-tou",
-    "Deutsche Freie Software Lizenz"                                                            : "D-FSL-1.0",
-    "DEC 3-Clause License"                                                                      : "DEC-3-Clause",
-    "diffmark license"                                                                          : "diffmark",
-    "Data licence Germany â attribution â version 2.0"                                          : "DL-DE-BY-2.0",
-    "Data licence Germany â zero â version 2.0"                                                 : "DL-DE-ZERO-2.0",
-    "DOC License"                                                                               : "DOC",
-    "DocBook Schema License"                                                                    : "DocBook-Schema",
-    "DocBook Stylesheet License"                                                                : "DocBook-Stylesheet",
-    "DocBook XML License"                                                                       : "DocBook-XML",
-    "Dotseqn License"                                                                           : "Dotseqn",
-    "Detection Rule License 1.0"                                                                : "DRL-1.0",
-    "Detection Rule License 1.1"                                                                : "DRL-1.1",
-    "DSDP License"                                                                              : "DSDP",
-    "David M. Gay dtoa License"                                                                 : "dtoa",
-    "dvipdfm License"                                                                           : "dvipdfm",
-    "Educational Community License v1.0"                                                        : "ECL-1.0",
-    "Educational Community License v2.0"                                                        : "ECL-2.0",
-    "Eiffel Forum License v1.0"                                                                 : "EFL-1.0",
-    "Eiffel Forum License v2.0"                                                                 : "EFL-2.0",
-    "eGenix.com Public License 1.1.0"                                                           : "eGenix",
-    "Elastic License 2.0"                                                                       : "Elastic-2.0",
-    "Entessa Public License v1.0"                                                               : "Entessa",
-    "EPICS Open License"                                                                        : "EPICS",
-    "Eclipse Public License 1.0"                                                                : "EPL-1.0",
-    "Eclipse Public License 2.0"                                                                : "EPL-2.0",
-    "Erlang Public License v1.1"                                                                : "ErlPL-1.1",
-    "Etalab Open License 2.0"                                                                   : "etalab-2.0",
-    "EU DataGrid Software License"                                                              : "EUDatagrid",
-    "European Union Public License 1.0"                                                         : "EUPL-1.0",
-    "European Union Public License 1.1"                                                         : "EUPL-1.1",
-    "European Union Public License 1.2"                                                         : "EUPL-1.2",
-    "Eurosym License"                                                                           : "Eurosym",
-    "Fair License"                                                                              : "Fair",
-    "Fuzzy Bitmap License"                                                                      : "FBM",
-    "Fraunhofer FDK AAC Codec Library"                                                          : "FDK-AAC",
-    "Ferguson Twofish License"                                                                  : "Ferguson-Twofish",
-    "Frameworx Open License 1.0"                                                                : "Frameworx-1.0",
-    "FreeBSD Documentation License"                                                             : "FreeBSD-DOC",
-    "FreeImage Public License v1.0"                                                             : "FreeImage",
-    "FSF All Permissive License"                                                                : "FSFAP",
-    "FSF All Permissive License (without Warranty)"                                             : "FSFAP-no-warranty-disclaimer",
-    "FSF Unlimited License"                                                                     : "FSFUL",
-    "FSF Unlimited License (with License Retention)"                                            : "FSFULLR",
-    "FSF Unlimited License (With License Retention and Warranty Disclaimer)"                    : "FSFULLRWD",
-    "Freetype Project License"                                                                  : "FTL",
-    "Furuseth License"                                                                          : "Furuseth",
-    "fwlw License"                                                                              : "fwlw",
-    "Gnome GCR Documentation License"                                                           : "GCR-docs",
-    "GD License"                                                                                : "GD",
-    "Generic XTS License"                                                                       : "generic-xts",
-    "GNU Free Documentation License v1.1 only - invariants"                                     : "GFDL-1.1-invariants-only",
-    "GNU Free Documentation License v1.1 or later - invariants"                                 : "GFDL-1.1-invariants-or-later",
-    "GNU Free Documentation License v1.1 only - no invariants"                                  : "GFDL-1.1-no-invariants-only",
-    "GNU Free Documentation License v1.1 or later - no invariants"                              : "GFDL-1.1-no-invariants-or-later",
-    "GNU Free Documentation License v1.1 only"                                                  : "GFDL-1.1-only",
-    "GNU Free Documentation License v1.1 or later"                                              : "GFDL-1.1-or-later",
-    "GNU Free Documentation License v1.2 only - invariants"                                     : "GFDL-1.2-invariants-only",
-    "GNU Free Documentation License v1.2 or later - invariants"                                 : "GFDL-1.2-invariants-or-later",
-    "GNU Free Documentation License v1.2 only - no invariants"                                  : "GFDL-1.2-no-invariants-only",
-    "GNU Free Documentation License v1.2 or later - no invariants"                              : "GFDL-1.2-no-invariants-or-later",
-    "GNU Free Documentation License v1.2 only"                                                  : "GFDL-1.2-only",
-    "GNU Free Documentation License v1.2 or later"                                              : "GFDL-1.2-or-later",
-    "GNU Free Documentation License v1.3 only - invariants"                                     : "GFDL-1.3-invariants-only",
-    "GNU Free Documentation License v1.3 or later - invariants"                                 : "GFDL-1.3-invariants-or-later",
-    "GNU Free Documentation License v1.3 only - no invariants"                                  : "GFDL-1.3-no-invariants-only",
-    "GNU Free Documentation License v1.3 or later - no invariants"                              : "GFDL-1.3-no-invariants-or-later",
-    "GNU Free Documentation License v1.3 only"                                                  : "GFDL-1.3-only",
-    "GNU Free Documentation License v1.3 or later"                                              : "GFDL-1.3-or-later",
-    "Giftware License"                                                                          : "Giftware",
-    "GL2PS License"                                                                             : "GL2PS",
-    "3dfx Glide License"                                                                        : "Glide",
-    "Glulxe License"                                                                            : "Glulxe",
-    "Good Luck With That Public License"                                                        : "GLWTPL",
-    "gnuplot License"                                                                           : "gnuplot",
-    "GNU General Public License v1.0 only"                                                      : "GPL-1.0-only",
-    "GNU General Public License v1.0 or later"                                                  : "GPL-1.0-or-later",
-    "GNU General Public License v2.0 only"                                                      : "GPL-2.0-only",
-    "GNU General Public License v2.0 or later"                                                  : "GPL-2.0-or-later",
-    "GNU General Public License v3.0 only"                                                      : "GPL-3.0-only",
-    "GNU General Public License v3.0 or later"                                                  : "GPL-3.0-or-later",
-    "Graphics Gems License"                                                                     : "Graphics-Gems",
-    "gSOAP Public License v1.3b"                                                                : "gSOAP-1.3b",
-    "gtkbook License"                                                                           : "gtkbook",
-    "Gutmann License"                                                                           : "Gutmann",
-    "Haskell Language Report License"                                                           : "HaskellReport",
-    "hdparm License"                                                                            : "hdparm",
-    "HIDAPI License"                                                                            : "HIDAPI",
-    "Hippocratic License 2.1"                                                                   : "Hippocratic-2.1",
-    "Hewlett-Packard 1986 License"                                                              : "HP-1986",
-    "Hewlett-Packard 1989 License"                                                              : "HP-1989",
-    "Historical Permission Notice and Disclaimer"                                               : "HPND",
-    "Historical Permission Notice and Disclaimer - DEC variant"                                 : "HPND-DEC",
-    "Historical Permission Notice and Disclaimer - documentation variant"                       : "HPND-doc",
-    "Historical Permission Notice and Disclaimer - documentation sell variant"                  : "HPND-doc-sell",
-    "HPND with US Government export control warning"                                            : "HPND-export-US",
-    "HPND with US Government export control warning and acknowledgment"                         : "HPND-export-US-acknowledgement",
-    "HPND with US Government export control warning and modification rqmt"                      : "HPND-export-US-modify",
-    "HPND with US Government export control and 2 disclaimers"                                  : "HPND-export2-US",
-    "Historical Permission Notice and Disclaimer - Fenneberg-Livingston variant"                : "HPND-Fenneberg-Livingston",
-    "Historical Permission Notice and Disclaimer    - INRIA-IMAG variant"                       : "HPND-INRIA-IMAG",
-    "Historical Permission Notice and Disclaimer - Intel variant"                               : "HPND-Intel",
-    "Historical Permission Notice and Disclaimer - Kevlin Henney variant"                       : "HPND-Kevlin-Henney",
-    "Historical Permission Notice and Disclaimer - Markus Kuhn variant"                         : "HPND-Markus-Kuhn",
-    "Historical Permission Notice and Disclaimer - merchantability variant"                     : "HPND-merchantability-variant",
-    "Historical Permission Notice and Disclaimer with MIT disclaimer"                           : "HPND-MIT-disclaimer",
-    "Historical Permission Notice and Disclaimer - Netrek variant"                              : "HPND-Netrek",
-    "Historical Permission Notice and Disclaimer - Pbmplus variant"                             : "HPND-Pbmplus",
-    "Historical Permission Notice and Disclaimer - sell xserver variant with MIT disclaimer"    : "HPND-sell-MIT-disclaimer-xserver",
-    "Historical Permission Notice and Disclaimer - sell regexpr variant"                        : "HPND-sell-regexpr",
-    "Historical Permission Notice and Disclaimer - sell variant"                                : "HPND-sell-variant",
-    "HPND sell variant with MIT disclaimer"                                                     : "HPND-sell-variant-MIT-disclaimer",
-    "HPND sell variant with MIT disclaimer - reverse"                                           : "HPND-sell-variant-MIT-disclaimer-rev",
-    "Historical Permission Notice and Disclaimer - University of California variant"            : "HPND-UC",
-    "Historical Permission Notice and Disclaimer - University of California, US export warning" : "HPND-UC-export-US",
-    "HTML Tidy License"                                                                         : "HTMLTIDY",
-    "IBM PowerPC Initialization and Boot Software"                                              : "IBM-pibs",
-    "ICU License"                                                                               : "ICU",
-    "IEC    Code Components End-user licence agreement"                                         : "IEC-Code-Components-EULA",
-    "Independent JPEG Group License"                                                            : "IJG",
-    "Independent JPEG Group License - short"                                                    : "IJG-short",
-    "ImageMagick License"                                                                       : "ImageMagick",
-    "iMatix Standard Function Library Agreement"                                                : "iMatix",
-    "Imlib2 License"                                                                            : "Imlib2",
-    "Info-ZIP License"                                                                          : "Info-ZIP",
-    "Inner Net License v2.0"                                                                    : "Inner-Net-2.0",
-    "Inno Setup License"                                                                        : "InnoSetup",
-    "Intel Open Source License"                                                                 : "Intel",
-    "Intel ACPI Software License Agreement"                                                     : "Intel-ACPI",
-    "Interbase Public License v1.0"                                                             : "Interbase-1.0",
-    "IPA Font License"                                                                          : "IPA",
-    "IBM Public License v1.0"                                                                   : "IPL-1.0",
-    "ISC License"                                                                               : "ISC",
-    "ISC Veillard variant"                                                                      : "ISC-Veillard",
-    "Jam License"                                                                               : "Jam",
-    "JasPer License"                                                                            : "JasPer-2.0",
-    "JPL Image Use Policy"                                                                      : "JPL-image",
-    "Japan Network Information Center License"                                                  : "JPNIC",
-    "JSON License"                                                                              : "JSON",
-    "Kastrup License"                                                                           : "Kastrup",
-    "Kazlib License"                                                                            : "Kazlib",
-    "Knuth CTAN License"                                                                        : "Knuth-CTAN",
-    "Licence Art Libre 1.2"                                                                     : "LAL-1.2",
-    "Licence Art Libre 1.3"                                                                     : "LAL-1.3",
-    "Latex2e License"                                                                           : "Latex2e",
-    "Latex2e with translated notice permission"                                                 : "Latex2e-translated-notice",
-    "Leptonica License"                                                                         : "Leptonica",
-    "GNU Library General Public License v2 only"                                                : "LGPL-2.0-only",
-    "GNU Library General Public License v2 or later"                                            : "LGPL-2.0-or-later",
-    "GNU Lesser General Public License v2.1 only"                                               : "LGPL-2.1-only",
-    "GNU Lesser General Public License v2.1 or later"                                           : "LGPL-2.1-or-later",
-    "GNU Lesser General Public License v3.0 only"                                               : "LGPL-3.0-only",
-    "GNU Lesser General Public License v3.0 or later"                                           : "LGPL-3.0-or-later",
-    "Lesser General Public License For Linguistic Resources"                                    : "LGPLLR",
-    "libpng License"                                                                            : "Libpng",
-    "PNG Reference Library version 2"                                                           : "libpng-2.0",
-    "libselinux public domain notice"                                                           : "libselinux-1.0",
-    "libtiff License"                                                                           : "libtiff",
-    "libutil David Nugent License"                                                              : "libutil-David-Nugent",
-    "Licence Libre du QuÃ©bec â Permissive version 1.1"                                         : "LiLiQ-P-1.1",
-    "Licence Libre du QuÃ©bec â RÃ©ciprocitÃ© version 1.1"                                      : "LiLiQ-R-1.1",
-    "Licence Libre du QuÃ©bec â RÃ©ciprocitÃ© forte version 1.1"                                : "LiLiQ-Rplus-1.1",
-    "Linux man-pages - 1 paragraph"                                                             : "Linux-man-pages-1-para",
-    "Linux man-pages Copyleft"                                                                  : "Linux-man-pages-copyleft",
-    "Linux man-pages Copyleft - 2 paragraphs"                                                   : "Linux-man-pages-copyleft-2-para",
-    "Linux man-pages Copyleft Variant"                                                          : "Linux-man-pages-copyleft-var",
-    "Linux Kernel Variant of OpenIB.org license"                                                : "Linux-OpenIB",
-    "Common Lisp LOOP License"                                                                  : "LOOP",
-    "LPD Documentation License"                                                                 : "LPD-document",
-    "Lucent Public License Version 1.0"                                                         : "LPL-1.0",
-    "Lucent Public License v1.02"                                                               : "LPL-1.02",
-    "LaTeX Project Public License v1.0"                                                         : "LPPL-1.0",
-    "LaTeX Project Public License v1.1"                                                         : "LPPL-1.1",
-    "LaTeX Project Public License v1.2"                                                         : "LPPL-1.2",
-    "LaTeX Project Public License v1.3a"                                                        : "LPPL-1.3a",
-    "LaTeX Project Public License v1.3c"                                                        : "LPPL-1.3c",
-    "lsof License"                                                                              : "lsof",
-    "Lucida Bitmap Fonts License"                                                               : "Lucida-Bitmap-Fonts",
-    "LZMA SDK License (versions 9.11 to 9.20)"                                                  : "LZMA-SDK-9.11-to-9.20",
-    "LZMA SDK License (versions 9.22 and beyond)"                                               : "LZMA-SDK-9.22",
-    "Mackerras 3-Clause License"                                                                : "Mackerras-3-Clause",
-    "Mackerras 3-Clause - acknowledgment variant"                                               : "Mackerras-3-Clause-acknowledgment",
-    "magaz License"                                                                             : "magaz",
-    "mailprio License"                                                                          : "mailprio",
-    "MakeIndex License"                                                                         : "MakeIndex",
-    "Martin Birgmeier License"                                                                  : "Martin-Birgmeier",
-    "McPhee Slideshow License"                                                                  : "McPhee-slideshow",
-    "metamail License"                                                                          : "metamail",
-    "Minpack License"                                                                           : "Minpack",
-    "MIPS License"                                                                              : "MIPS",
-    "The MirOS Licence"                                                                         : "MirOS",
-    "MIT License"                                                                               : "MIT",
-    "MIT No Attribution"                                                                        : "MIT-0",
-    "Enlightenment License (e16)"                                                               : "MIT-advertising",
-    "MIT Click License"                                                                         : "MIT-Click",
-    "CMU License"                                                                               : "MIT-CMU",
-    "enna License"                                                                              : "MIT-enna",
-    "feh License"                                                                               : "MIT-feh",
-    "MIT Festival Variant"                                                                      : "MIT-Festival",
-    "MIT Khronos - old variant"                                                                 : "MIT-Khronos-old",
-    "MIT License Modern Variant"                                                                : "MIT-Modern-Variant",
-    "MIT Open Group variant"                                                                    : "MIT-open-group",
-    "MIT testregex Variant"                                                                     : "MIT-testregex",
-    "MIT Tom Wu Variant"                                                                        : "MIT-Wu",
-    "MIT +no-false-attribs license"                                                             : "MITNFA",
-    "MMIXware License"                                                                          : "MMIXware",
-    "Motosoto License"                                                                          : "Motosoto",
-    "MPEG Software Simulation"                                                                  : "MPEG-SSG",
-    "mpi Permissive License"                                                                    : "mpi-permissive",
-    "mpich2 License"                                                                            : "mpich2",
-    "Mozilla Public License 1.0"                                                                : "MPL-1.0",
-    "Mozilla Public License 1.1"                                                                : "MPL-1.1",
-    "Mozilla Public License 2.0"                                                                : "MPL-2.0",
-    "Mozilla Public License 2.0 (no copyleft exception)"                                        : "MPL-2.0-no-copyleft-exception",
-    "mplus Font License"                                                                        : "mplus",
-    "Microsoft Limited Public License"                                                          : "MS-LPL",
-    "Microsoft Public License"                                                                  : "MS-PL",
-    "Microsoft Reciprocal License"                                                              : "MS-RL",
-    "Matrix Template Library License"                                                           : "MTLL",
-    "Mulan Permissive Software License, Version 1"                                              : "MulanPSL-1.0",
-    "Mulan Permissive Software License, Version 2"                                              : "MulanPSL-2.0",
-    "Multics License"                                                                           : "Multics",
-    "Mup License"                                                                               : "Mup",
-    "Nara Institute of Science and Technology License (2003)"                                   : "NAIST-2003",
-    "NASA Open Source Agreement 1.3"                                                            : "NASA-1.3",
-    "Naumen Public License"                                                                     : "Naumen",
-    "Net Boolean Public License v1"                                                             : "NBPL-1.0",
-    "NCBI Public Domain Notice"                                                                 : "NCBI-PD",
-    "Non-Commercial Government Licence"                                                         : "NCGL-UK-2.0",
-    "NCL Source Code License"                                                                   : "NCL",
-    "University of Illinois/NCSA Open Source License"                                           : "NCSA",
-    "NetCDF license"                                                                            : "NetCDF",
-    "Newsletr License"                                                                          : "Newsletr",
-    "Nethack General Public License"                                                            : "NGPL",
-    "NICTA Public Software License, Version 1.0"                                                : "NICTA-1.0",
-    "NIST Public Domain Notice"                                                                 : "NIST-PD",
-    "NIST Public Domain Notice with license fallback"                                           : "NIST-PD-fallback",
-    "NIST Software License"                                                                     : "NIST-Software",
-    "Norwegian Licence for Open Government Data (NLOD) 1.0"                                     : "NLOD-1.0",
-    "Norwegian Licence for Open Government Data (NLOD) 2.0"                                     : "NLOD-2.0",
-    "No Limit Public License"                                                                   : "NLPL",
-    "Nokia Open Source License"                                                                 : "Nokia",
-    "Netizen Open Source License"                                                               : "NOSL",
-    "Noweb License"                                                                             : "Noweb",
-    "Netscape Public License v1.0"                                                              : "NPL-1.0",
-    "Netscape Public License v1.1"                                                              : "NPL-1.1",
-    "Non-Profit Open Software License 3.0"                                                      : "NPOSL-3.0",
-    "NRL License"                                                                               : "NRL",
-    "NTP License"                                                                               : "NTP",
-    "NTP No Attribution"                                                                        : "NTP-0",
-    "Open Use of Data Agreement v1.0"                                                           : "O-UDA-1.0",
-    "OAR License"                                                                               : "OAR",
-    "Open CASCADE Technology Public License"                                                    : "OCCT-PL",
-    "OCLC Research Public License 2.0"                                                          : "OCLC-2.0",
-    "Open Data Commons Open Database License v1.0"                                              : "ODbL-1.0",
-    "Open Data Commons Attribution License v1.0"                                                : "ODC-By-1.0",
-    "OFFIS License"                                                                             : "OFFIS",
-    "SIL Open Font License 1.0"                                                                 : "OFL-1.0",
-    "SIL Open Font License 1.0 with no Reserved Font Name"                                      : "OFL-1.0-no-RFN",
-    "SIL Open Font License 1.0 with Reserved Font Name"                                         : "OFL-1.0-RFN",
-    "SIL Open Font License 1.1"                                                                 : "OFL-1.1",
-    "SIL Open Font License 1.1 with no Reserved Font Name"                                      : "OFL-1.1-no-RFN",
-    "SIL Open Font License 1.1 with Reserved Font Name"                                         : "OFL-1.1-RFN",
-    "OGC Software License, Version 1.0"                                                         : "OGC-1.0",
-    "Taiwan Open Government Data License, version 1.0"                                          : "OGDL-Taiwan-1.0",
-    "Open Government Licence - Canada"                                                          : "OGL-Canada-2.0",
-    "Open Government Licence v1.0"                                                              : "OGL-UK-1.0",
-    "Open Government Licence v2.0"                                                              : "OGL-UK-2.0",
-    "Open Government Licence v3.0"                                                              : "OGL-UK-3.0",
-    "Open Group Test Suite License"                                                             : "OGTSL",
-    "Open LDAP Public License v1.1"                                                             : "OLDAP-1.1",
-    "Open LDAP Public License v1.2"                                                             : "OLDAP-1.2",
-    "Open LDAP Public License v1.3"                                                             : "OLDAP-1.3",
-    "Open LDAP Public License v1.4"                                                             : "OLDAP-1.4",
-    "Open LDAP Public License v2.0 (or possibly 2.0A and 2.0B)"                                 : "OLDAP-2.0",
-    "Open LDAP Public License v2.0.1"                                                           : "OLDAP-2.0.1",
-    "Open LDAP Public License v2.1"                                                             : "OLDAP-2.1",
-    "Open LDAP Public License v2.2"                                                             : "OLDAP-2.2",
-    "Open LDAP Public License v2.2.1"                                                           : "OLDAP-2.2.1",
-    "Open LDAP Public License 2.2.2"                                                            : "OLDAP-2.2.2",
-    "Open LDAP Public License v2.3"                                                             : "OLDAP-2.3",
-    "Open LDAP Public License v2.4"                                                             : "OLDAP-2.4",
-    "Open LDAP Public License v2.5"                                                             : "OLDAP-2.5",
-    "Open LDAP Public License v2.6"                                                             : "OLDAP-2.6",
-    "Open LDAP Public License v2.7"                                                             : "OLDAP-2.7",
-    "Open LDAP Public License v2.8"                                                             : "OLDAP-2.8",
-    "Open Logistics Foundation License Version 1.3"                                             : "OLFL-1.3",
-    "Open Market License"                                                                       : "OML",
-    "OpenPBS v2.3 Software License"                                                             : "OpenPBS-2.3",
-    "OpenSSL License"                                                                           : "OpenSSL",
-    "OpenSSL License - standalone"                                                              : "OpenSSL-standalone",
-    "OpenVision License"                                                                        : "OpenVision",
-    "Open Public License v1.0"                                                                  : "OPL-1.0",
-    "United    Kingdom Open Parliament Licence v3.0"                                            : "OPL-UK-3.0",
-    "Open Publication License v1.0"                                                             : "OPUBL-1.0",
-    "OSET Public License version 2.1"                                                           : "OSET-PL-2.1",
-    "Open Software License 1.0"                                                                 : "OSL-1.0",
-    "Open Software License 1.1"                                                                 : "OSL-1.1",
-    "Open Software License 2.0"                                                                 : "OSL-2.0",
-    "Open Software License 2.1"                                                                 : "OSL-2.1",
-    "Open Software License 3.0"                                                                 : "OSL-3.0",
-    "PADL License"                                                                              : "PADL",
-    "The Parity Public License 6.0.0"                                                           : "Parity-6.0.0",
-    "The Parity Public License 7.0.0"                                                           : "Parity-7.0.0",
-    "Open Data Commons Public Domain Dedication & License 1.0"                                  : "PDDL-1.0",
-    "PHP License v3.0"                                                                          : "PHP-3.0",
-    "PHP License v3.01"                                                                         : "PHP-3.01",
-    "Pixar License"                                                                             : "Pixar",
-    "pkgconf License"                                                                           : "pkgconf",
-    "Plexus Classworlds License"                                                                : "Plexus",
-    "pnmstitch License"                                                                         : "pnmstitch",
-    "PolyForm Noncommercial License 1.0.0"                                                      : "PolyForm-Noncommercial-1.0.0",
-    "PolyForm Small Business License 1.0.0"                                                     : "PolyForm-Small-Business-1.0.0",
-    "PostgreSQL License"                                                                        : "PostgreSQL",
-    "Peer Production License"                                                                   : "PPL",
-    "Python Software Foundation License 2.0"                                                    : "PSF-2.0",
-    "psfrag License"                                                                            : "psfrag",
-    "psutils License"                                                                           : "psutils",
-    "Python License 2.0"                                                                        : "Python-2.0",
-    "Python License 2.0.1"                                                                      : "Python-2.0.1",
-    "Python ldap License"                                                                       : "python-ldap",
-    "Qhull License"                                                                             : "Qhull",
-    "Q Public License 1.0"                                                                      : "QPL-1.0",
-    "Q Public License 1.0 - INRIA 2004 variant"                                                 : "QPL-1.0-INRIA-2004",
-    "radvd License"                                                                             : "radvd",
-    "Rdisc License"                                                                             : "Rdisc",
-    "Red Hat eCos Public License v1.1"                                                          : "RHeCos-1.1",
-    "Reciprocal Public License 1.1"                                                             : "RPL-1.1",
-    "Reciprocal Public License 1.5"                                                             : "RPL-1.5",
-    "RealNetworks Public Source License v1.0"                                                   : "RPSL-1.0",
-    "RSA Message-Digest License"                                                                : "RSA-MD",
-    "Ricoh Source Code Public License"                                                          : "RSCPL",
-    "Ruby License"                                                                              : "Ruby",
-    "Ruby pty extension license"                                                                : "Ruby-pty",
-    "Sax Public Domain Notice"                                                                  : "SAX-PD",
-    "Sax Public Domain Notice 2.0"                                                              : "SAX-PD-2.0",
-    "Saxpath License"                                                                           : "Saxpath",
-    "SCEA Shared Source License"                                                                : "SCEA",
-    "Scheme Language Report License"                                                            : "SchemeReport",
-    "Sendmail License"                                                                          : "Sendmail",
-    "Sendmail License 8.23"                                                                     : "Sendmail-8.23",
-    "Sendmail Open Source License v1.1"                                                         : "Sendmail-Open-Source-1.1",
-    "SGI Free Software License B v1.0"                                                          : "SGI-B-1.0",
-    "SGI Free Software License B v1.1"                                                          : "SGI-B-1.1",
-    "SGI Free Software License B v2.0"                                                          : "SGI-B-2.0",
-    "SGI OpenGL License"                                                                        : "SGI-OpenGL",
-    "SGP4 Permission Notice"                                                                    : "SGP4",
-    "Solderpad Hardware License v0.5"                                                           : "SHL-0.5",
-    "Solderpad Hardware License, Version 0.51"                                                  : "SHL-0.51",
-    "Simple Public License 2.0"                                                                 : "SimPL-2.0",
-    "Sun Industry Standards Source License v1.1"                                                : "SISSL",
-    "Sun Industry Standards Source License v1.2"                                                : "SISSL-1.2",
-    "SL License"                                                                                : "SL",
-    "Sleepycat License"                                                                         : "Sleepycat",
-    "SMAIL General Public License"                                                              : "SMAIL-GPL",
-    "Standard ML of New Jersey License"                                                         : "SMLNJ",
-    "Secure Messaging Protocol Public License"                                                  : "SMPPL",
-    "SNIA Public License 1.1"                                                                   : "SNIA",
-    "snprintf License"                                                                          : "snprintf",
-    "softSurfer License"                                                                        : "softSurfer",
-    "Soundex License"                                                                           : "Soundex",
-    "Spencer License 86"                                                                        : "Spencer-86",
-    "Spencer License 94"                                                                        : "Spencer-94",
-    "Spencer License 99"                                                                        : "Spencer-99",
-    "Sun Public License v1.0"                                                                   : "SPL-1.0",
-    "ssh-keyscan License"                                                                       : "ssh-keyscan",
-    "SSH OpenSSH license"                                                                       : "SSH-OpenSSH",
-    "SSH short notice"                                                                          : "SSH-short",
-    "SSLeay License - standalone"                                                               : "SSLeay-standalone",
-    "Server Side Public License, v 1"                                                           : "SSPL-1.0",
-    "SugarCRM Public License v1.1.3"                                                            : "SugarCRM-1.1.3",
-    "Sun PPP License"                                                                           : "Sun-PPP",
-    "Sun PPP License (2000)"                                                                    : "Sun-PPP-2000",
-    "SunPro License"                                                                            : "SunPro",
-    "Scheme Widget Library (SWL) Software License Agreement"                                    : "SWL",
-    "swrule License"                                                                            : "swrule",
-    "Symlinks License"                                                                          : "Symlinks",
-    "TAPR Open Hardware License v1.0"                                                           : "TAPR-OHL-1.0",
-    "TCL/TK License"                                                                            : "TCL",
-    "TCP Wrappers License"                                                                      : "TCP-wrappers",
-    "TermReadKey License"                                                                       : "TermReadKey",
-    "Transitive Grace Period Public Licence 1.0"                                                : "TGPPL-1.0",
-    "ThirdEye License"                                                                          : "ThirdEye",
-    "threeparttable License"                                                                    : "threeparttable",
-    "TMate Open Source License"                                                                 : "TMate",
-    "TORQUE v2.5+ Software License v1.1"                                                        : "TORQUE-1.1",
-    "Trusster Open Source License"                                                              : "TOSL",
-    "Time::ParseDate License"                                                                   : "TPDL",
-    "THOR Public License 1.0"                                                                   : "TPL-1.0",
-    "TrustedQSL License"                                                                        : "TrustedQSL",
-    "Text-Tabs+Wrap License"                                                                    : "TTWL",
-    "TTYP0 License"                                                                             : "TTYP0",
-    "Technische Universitaet Berlin License 1.0"                                                : "TU-Berlin-1.0",
-    "Technische Universitaet Berlin License 2.0"                                                : "TU-Berlin-2.0",
-    "Ubuntu Font Licence v1.0"                                                                  : "Ubuntu-font-1.0",
-    "UCAR License"                                                                              : "UCAR",
-    "Upstream Compatibility License v1.0"                                                       : "UCL-1.0",
-    "ulem License"                                                                              : "ulem",
-    "Michigan/Merit Networks License"                                                           : "UMich-Merit",
-    "Unicode License v3"                                                                        : "Unicode-3.0",
-    "Unicode License Agreement - Data Files and Software (2015)"                                : "Unicode-DFS-2015",
-    "Unicode License Agreement - Data Files and Software (2016)"                                : "Unicode-DFS-2016",
-    "Unicode Terms of Use"                                                                      : "Unicode-TOU",
-    "UnixCrypt License"                                                                         : "UnixCrypt",
-    "The Unlicense"                                                                             : "Unlicense",
-    "Universal Permissive License v1.0"                                                         : "UPL-1.0",
-    "Utah Raster Toolkit Run Length Encoded License"                                            : "URT-RLE",
-    "Vim License"                                                                               : "Vim",
-    "VOSTROM Public License for Open Source"                                                    : "VOSTROM",
-    "Vovida Software License v1.0"                                                              : "VSL-1.0",
-    "W3C Software Notice and License (2002-12-31)"                                              : "W3C",
-    "W3C Software Notice and License (1998-07-20)"                                              : "W3C-19980720",
-    "W3C Software Notice and Document License (2015-05-13)"                                     : "W3C-20150513",
-    "w3m License"                                                                               : "w3m",
-    "Sybase Open Watcom Public License 1.0"                                                     : "Watcom-1.0",
-    "Widget Workshop License"                                                                   : "Widget-Workshop",
-    "Wsuipa License"                                                                            : "Wsuipa",
-    "Do What The F*ck You Want To Public License"                                               : "WTFPL",
-    "WWL License"                                                                               : "wwl",
-    "X11 License"                                                                               : "X11",
-    "X11 License Distribution Modification Variant"                                             : "X11-distribute-modifications-variant",
-    "X11 swapped final paragraphs"                                                              : "X11-swapped",
-    "Xdebug License v 1.03"                                                                     : "Xdebug-1.03",
-    "Xerox License"                                                                             : "Xerox",
-    "Xfig License"                                                                              : "Xfig",
-    "XFree86 License 1.1"                                                                       : "XFree86-1.1",
-    "xinetd License"                                                                            : "xinetd",
-    "xkeyboard-config Zinoviev License"                                                         : "xkeyboard-config-Zinoviev",
-    "xlock License"                                                                             : "xlock",
-    "X.Net License"                                                                             : "Xnet",
-    "XPP License"                                                                               : "xpp",
-    "XSkat License"                                                                             : "XSkat",
-    "xzoom License"                                                                             : "xzoom",
-    "Yahoo! Public License v1.0"                                                                : "YPL-1.0",
-    "Yahoo! Public License v1.1"                                                                : "YPL-1.1",
-    "Zed License"                                                                               : "Zed",
-    "Zeeff License"                                                                             : "Zeeff",
-    "Zend License v2.0"                                                                         : "Zend-2.0",
-    "Zimbra Public License v1.3"                                                                : "Zimbra-1.3",
-    "Zimbra Public License v1.4"                                                                : "Zimbra-1.4",
-    "zlib License"                                                                              : "Zlib",
-    "zlib/libpng License with Acknowledgement"                                                  : "zlib-acknowledgement",
-    "Zope Public License 1.1"                                                                   : "ZPL-1.1",
-    "Zope Public License 2.0"                                                                   : "ZPL-2.0",
-    "Zope Public License 2.1"                                                                   : "ZPL-2.1",
-}
+LICENSES = {}
 
 EXTENSION_TYPES = [
     "add-on",
@@ -772,7 +157,7 @@ PATH_EXCLUDE_PATTERNS = [
 ]
 
 ########################•########################
-"""                   UTILS                   """
+"""                 VALIDATORS                """
 ########################•########################
 
 def create_safe_name(name=""):
@@ -787,9 +172,6 @@ def create_safe_name(name=""):
 def get_file_extension(file_path):
     return Path(file_path).suffix.lower()
 
-########################•########################
-"""                 VALIDATORS                """
-########################•########################
 
 is_integer     = lambda item: isinstance(item, int)
 is_string      = lambda item: isinstance(item, str) and bool(item.strip())
@@ -811,384 +193,47 @@ does_file_name_match_no_ext   = lambda file_path, file_name: is_path(file_path) 
 does_file_name_match_with_ext = lambda file_path, file_name: is_path(file_path) and is_file_name(file_name) and Path(file_path).name.lower() == file_name.lower()
 
 ########################•########################
-"""                 DATA BASE                 """
+"""                 VARIABLES                 """
 ########################•########################
 
-''' | Manifest File Layout
-    |---------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    | Blender                | DB                     | Required | Notes
-    |---------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    | schema_version         | mani_schema_ver        | O        | Internal version of the file format - use 1.0.0
-    | maintainer             | dev_author <dev_email> | O        | Developer name <email@address.com>
-    | id                     | ext_id                 | O        | Unique identifier for the extension
-    | type                   | ext_type               | O        | “add-on” or “theme”
-    | name                   | ext_name               | O        | Complete name of the extension
-    | version                | ext_version            | O        | Version of the extension
-    | tagline                | ext_tag_line           | O        | One-line short description, up to 64 characters - cannot end with punctuation
-    | tags                   | ext_tags               | X        | Pick tags based on type
-    | website                | ext_website            | X        | Website for the extension
-    | license                | ext_licenses           | O        | List of licenses, use SPDX license identifier
-    | copyright              | ext_copyright          | X        | Some licenses require a copyright, copyrights must be “Year Name” or “Year-Year Name”
-    | blender_version_min    | blender_ver_min        | O        | Minimum supported Blender version - use at least 4.2.0
-    | blender_version_max    | blender_ver_max        | X        | Blender version that the extension does not support, earlier versions are supported
-    | permissions            | ext_permissions        | X        | Options : files, network, clipboard, camera, microphone. Each permission followed by explanation (short single-sentence, up to 64 characters, with no end punctuation)
-    | platforms              | ext_platforms          | X        | List of supported platforms. If omitted, the extension will be available in all operating systems
-    | wheels                 | ext_wheels             | X        | List of relative file-paths Python Wheels
-    | paths                  | ext_path_includes      | X        | A list of file-paths relative to the manifest to include when building the package
-    | paths_exclude_pattern  | ext_path_excludes      | X        | List of string, the pattern matching is compatible with gitignore
-    |---------------------------------------------------------------------------------------------------------------------------------------------------------------------
-'''
+# --- Section 1 --- #
 
-class DataBase:
-    def __init__(self):
-        # --- BLENDER --- #
-        self.__blender_exe_path = None
-        self.__blender_ver_min  = None
-        self.__blender_ver_max  = None
-        # --- DIRECTORIES --- #
-        self.__src_dir   = None
-        self.__build_dir = None
-        # --- BUILD --- #
-        self.__build_split_plats = None
-        self.__build_verbose     = None
-        # --- DEVELOPER --- #
-        self.__dev_author = None
-        self.__dev_email  = None
-        # --- EXTENSION --- #
-        self.__ext_id            = None
-        self.__ext_name          = None
-        self.__ext_type          = None
-        self.__ext_tags          = None
-        self.__ext_version       = None
-        self.__ext_tag_line      = None
-        self.__ext_website       = None
-        self.__ext_licenses      = None
-        self.__ext_copyright     = None
-        self.__ext_platforms     = None
-        self.__ext_wheels        = None
-        self.__ext_permissions   = None
-        self.__ext_path_includes = None
-        self.__ext_path_excludes = None
+WIG__BLENDER_EXE = None
+VAR__BLENDER_EXE = None
 
-    @property # IN -> String or Path || OUT -> Path
-    def blender_exe_path(self):
-        if is_exe(self.__blender_exe_path):
-            return Path(self.__blender_exe_path)
-        return None
-    @blender_exe_path.setter
-    def blender_exe_path(self, value):
-        self.__blender_exe_path = None
-        if is_exe(value):
-            self.__blender_exe_path = Path(value)
 
-    @property # IN -> (0,0,0) || OUT -> "0.0.0"
-    def blender_ver_min(self):
-        if is_iterable(self.__blender_ver_min):
-            if len(self.__blender_ver_min) == 3:
-                a, b, c = self.__blender_ver_min
-                return f"{a}.{b}.{c}"
-        return None
-    @blender_ver_min.setter
-    def blender_ver_min(self, value):
-        self.__blender_ver_min = None
-        if is_iterable(value):
-            if len(value) == 3:
-                if all(isinstance(item, int) for item in value):
-                    self.__blender_ver_min = value
+# --- Section 2 --- #
+# --- Section 3 --- #
+# --- Section 4 --- #
+# --- Section 5 --- #
+# --- Section 6 --- #
 
-    @property # IN -> (0,0,0) || OUT -> "0.0.0"
-    def blender_ver_max(self):
-        if is_iterable(self.__blender_ver_max):
-            if len(self.__blender_ver_max) == 3:
-                a, b, c = self.__blender_ver_max
-                return f"{a}.{b}.{c}"
-        return None
-    @blender_ver_max.setter
-    def blender_ver_max(self, value):
-        self.__blender_ver_max = None
-        if is_iterable(value):
-            if len(value) == 3:
-                if all(isinstance(item, int) for item in value):
-                    self.__blender_ver_max = value
-
-    @property # IN -> String or Path || OUT -> Path
-    def src_dir(self):
-        if is_dir(self.__src_dir):
-            return Path(self.__src_dir)
-        return None
-    @src_dir.setter
-    def src_dir(self, value):
-        self.__src_dir = None
-        if is_dir(value):
-            self.__src_dir = Path(value)
-
-    @property # IN -> String or Path || OUT -> Path
-    def build_dir(self):
-        if is_dir(self.__build_dir):
-            return Path(self.__build_dir)
-        return None
-    @build_dir.setter
-    def build_dir(self, value):
-        self.__build_dir = None
-        if is_dir(value):
-            self.__build_dir = Path(value)
-
-    @property # IN -> self.ext_id & self.ext_version || OUT -> String
-    def build_file_name(self):
-        if self.ext_id:
-            if self.ext_version:
-                return f"{self.ext_id}-{self.ext_version}.zip"
-        return None
-
-    @property # IN -> Bool || OUT -> Bool
-    def build_split_plats(self):
-        return bool(self.__build_split_plats)
-    @build_split_plats.setter
-    def build_split_plats(self, value):
-        self.__build_split_plats = None
-        if isinstance(value, bool):
-            self.__build_split_plats = value
-
-    @property # IN -> Bool || OUT -> Bool
-    def build_verbose(self):
-        return bool(self.__build_verbose)
-    @build_verbose.setter
-    def build_verbose(self, value):
-        self.__build_verbose = None
-        if isinstance(value, bool):
-            self.__build_verbose = value
-
-    @property # OUT -> "0.0.0"
-    def mani_schema_ver(self):
-        return "1.0.0"
-
-    @property # OUT -> String Filename w Extension
-    def mani_file_name(self):
-        return "blender_manifest.toml"
-
-    @property # IN -> self.src_dir || OUT -> Path
-    def mani_file_path(self):
-        if self.src_dir:
-            return self.src_dir.joinpath(self.mani_file_name)
-        return None
-
-    @property # IN -> String || OUT -> String
-    def dev_author(self):
-        if is_string(self.__dev_author):
-            return self.__dev_author
-        return None
-    @dev_author.setter
-    def dev_author(self, value):
-        self.__dev_author = None
-        if is_string(value):
-            self.__dev_author = value
-
-    @property # IN -> String || OUT -> String
-    def dev_email(self):
-        if is_string(self.__dev_email):
-            return self.__dev_email
-        return None
-    @dev_email.setter
-    def dev_email(self, value):
-        self.__dev_email = None
-        if is_email(value):
-            self.__dev_email = value
-
-    @property # IN -> String || OUT -> Safe String
-    def ext_id(self):
-        if is_string(self.__ext_id):
-            return self.__ext_id
-        return None
-    @ext_id.setter
-    def ext_id(self, value):
-        self.__ext_id = None
-        if is_string(value):
-            name = create_safe_name(value)
-            if name:
-                self.__ext_id = name
-
-    @property # IN -> String || OUT -> String
-    def ext_name(self):
-        if is_string(self.__ext_name):
-            return self.__ext_name
-        return None
-    @ext_name.setter
-    def ext_name(self, value):
-        self.__ext_name = None
-        if is_string(value):
-            self.__ext_name = value
-
-    @property # IN -> String || OUT -> String || EXTENSION_TYPES
-    def ext_type(self):
-        if is_string(self.__ext_type):
-            if self.__ext_type in EXTENSION_TYPES:
-                return self.__ext_type
-        return None
-    @ext_type.setter
-    def ext_type(self, value):
-        self.__ext_type = None
-        if is_string(value):
-            if value in EXTENSION_TYPES:
-                self.__ext_type = value
-
-    @property # IN -> self.ext_type [String,] || OUT -> [String,] || ADDON_TAGS or THEME_TAGS
-    def ext_tags(self):
-        if is_all_strs(self.__ext_tags):
-            if self.ext_type == 'add-on':
-                return [tag for tag in self.__ext_tags if tag in ADDON_TAGS]
-            elif self.ext_type == 'theme':
-                return [tag for tag in self.__ext_tags if tag in THEME_TAGS]
-        return None
-    @ext_tags.setter
-    def ext_tags(self, value):
-        self.__ext_tags = None
-        if is_all_strs(value):
-            if self.ext_type == 'add-on':
-                self.__ext_tags = [tag for tag in value if tag in ADDON_TAGS]
-            elif self.ext_type == 'theme':
-                self.__ext_tags = [tag for tag in value if tag in THEME_TAGS]
-
-    @property # IN -> (0,0,0) || OUT -> "0.0.0"
-    def ext_version(self):
-        if is_iterable(self.__ext_version):
-            if len(self.__ext_version) == 3:
-                a, b, c = self.__ext_version
-                return f"{a}.{b}.{c}"
-        return None
-    @ext_version.setter
-    def ext_version(self, value):
-        self.__ext_version = None
-        if is_iterable(value):
-            if len(value) == 3:
-                if all(isinstance(item, int) for item in value):
-                    self.__ext_version = value
-
-    @property # IN -> String || OUT -> String[:64]
-    def ext_tag_line(self):
-        if is_string(self.__ext_tag_line):
-            return self.__ext_tag_line[:64]
-        return None
-    @ext_tag_line.setter
-    def ext_tag_line(self, value):
-        self.__ext_tag_line = None
-        if is_string(value):
-            self.__ext_tag_line = value
-
-    @property # IN -> String || OUT -> String
-    def ext_website(self):
-        if is_website(self.__ext_website):
-            return self.__ext_website
-        return None
-    @ext_website.setter
-    def ext_website(self, value):
-        self.__ext_website = None
-        if is_website(value):
-            self.__ext_website = value
-
-    @property # IN -> [String,] || OUT -> [String,] || LICENSES
-    def ext_licenses(self):
-        if is_all_strs(self.__ext_licenses):
-            return self.__ext_licenses
-        return None
-    @ext_licenses.setter
-    def ext_licenses(self, value):
-        self.__ext_licenses = None
-        if is_all_strs(value):
-            licenses = [item for item in value if item in LICENSES.keys()]
-            if licenses:
-                self.__ext_licenses = licenses
-
-    @property # IN -> [(String Year, String Name),] || OUT -> [(String Year, String Name),]
-    def ext_copyright(self):
-        if is_iterable(self.__ext_copyright):
-            return self.__ext_copyright
-        return None
-    @ext_copyright.setter
-    def ext_copyright(self, value):
-        self.__ext_copyright = None
-        if is_iterable(value):
-            for item in value:
-                if len(item) == 2:
-                    year, name = item
-                    if is_string(year) and is_string(name):
-                        if not isinstance(self.__ext_copyright, list):
-                            self.__ext_copyright = []
-                        self.__ext_copyright.append((year, name))
-
-    @property # IN -> [(String Resource, String Reason),] || OUT -> [(String Resource, String Reason),] || PERMISSIONS
-    def ext_permissions(self):
-        if is_iterable(self.__ext_permissions):
-            return self.__ext_permissions
-        return None
-    @ext_permissions.setter
-    def ext_permissions(self, value):
-        self.__ext_permissions = None
-        if is_iterable(value):
-            for item in value:
-                if len(item) == 2:
-                    resource, reason = item
-                    if is_string(resource) and resource in PERMISSIONS and is_string(reason):
-                        if not isinstance(self.__ext_permissions, list):
-                            self.__ext_permissions = []
-                        self.__ext_permissions.append((resource, reason))
-
-    @property # IN -> [String Platform,] || OUT -> [String Platform,] || PLATFORMS
-    def ext_platforms(self):
-        if is_all_strs(self.__ext_platforms):
-            return self.__ext_platforms
-    @ext_platforms.setter
-    def ext_platforms(self, value):
-        self.__ext_platforms = None
-        if is_all_strs(value):
-            platforms = [item for item in value in item in PLATFORMS]
-            if platforms:
-                self.__ext_platforms = platforms
-
-    @property # IN -> [String Wheel Path,] || OUT -> [String Wheel Path,]
-    def ext_wheels(self):
-        if is_all_strs(self.__ext_wheels):
-            return self.__ext_wheels
-        return None
-    @ext_wheels.setter
-    def ext_wheels(self, value):
-        self.__ext_wheels = None
-        if is_all_strs(value):
-            self.__ext_wheels = value
-
-    @property # IN -> [String Include Path,] || OUT -> [String Include Path,]
-    def ext_path_includes(self):
-        if is_all_strs(self.__ext_path_includes):
-            return self.__ext_path_includes
-        return None
-    @ext_path_includes.setter
-    def ext_path_includes(self, value):
-        self.__ext_path_includes = None
-        if is_all_strs(value):
-            src_dir = self.src_dir
-            if src_dir:
-                include_paths = [item for item in value if is_path(src_dir.joinpath(item))]
-                if include_paths:
-                    self.__ext_path_includes = include_paths
-
-    @property # IN -> [String Exclude Pattern,] || OUT -> [String Exclude Pattern,] || PATH_EXCLUDE_PATTERNS
-    def ext_path_excludes(self):
-        if is_all_strs(self.__ext_path_excludes):
-            return self.__ext_path_excludes
-        return None
-    @ext_path_excludes.setter
-    def ext_path_excludes(self, value):
-        self.__ext_path_excludes = None
-        if is_all_strs(value):
-            excludes = [item for item in value if item in PATH_EXCLUDE_PATTERNS]
-            if excludes:
-                self.__ext_path_excludes = excludes
-
-DB = DataBase()
 
 ########################•########################
-"""                   FOLDERS                 """
+"""                  BUILDERS                 """
 ########################•########################
 
+@try_except_decorator
+def set_licenses():
+    global LICENSES
+    url = 'https://spdx.org/licenses/'
+    response = requests.get(url)
+    response.raise_for_status()
+    soup = BeautifulSoup(response.text, 'html.parser')
+    table = soup.find('table')
+    licenses = {}
+    for row in table.find_all('tr')[1:]:
+        columns = row.find_all('td')
+        if len(columns) >= 2:
+            full_name = columns[0].get_text(strip=True).replace('\"', '')
+            identifier = columns[1].get_text(strip=True).replace('\"', '')
+            if full_name and identifier:
+                licenses[full_name] = identifier
+    for key, value in licenses.items():
+        LICENSES[key] = f"SPDX:{value}"
+
+
+@try_except_decorator
 def setup_build_folder():
     # Error : Requirements
     if not DB.validate_attributes(attrs=['EXT_ID', 'SRC_PARENT_DIR']):
@@ -1205,10 +250,8 @@ def setup_build_folder():
     # Valid
     return True
 
-########################•########################
-"""                   FILES                   """
-########################•########################
 
+@try_except_decorator
 def write_manifest_file():
     # Error : Source Dir
     if not DB.validate_attributes(attrs=['SRC_DIR']):
@@ -1288,6 +331,7 @@ def write_manifest_file():
 """                  COMMANDS                 """
 ########################•########################
 
+@try_except_decorator
 def validate_manifest():
     # Error : Requirements
     if not DB.validate_attributes(attrs=['BLENDER_EXE_PATH', 'SRC_DIR']):
@@ -1308,6 +352,7 @@ def validate_manifest():
         print(f"Standard Error: {e.stderr}")
 
 
+@try_except_decorator
 def build_extension():
     # Error : Requirements
     if not DB.validate_attributes(attrs=['BLENDER_EXE_PATH', 'SRC_DIR', 'BUILD_DIR']):
@@ -1335,48 +380,221 @@ def build_extension():
         print(f"Standard Error: {e.stderr}")
 
 ########################•########################
-"""                    GUI                    """
+"""                 CALLBACKS                 """
 ########################•########################
 
-'''
-ttk = "Themed" Tk
-ttk widgets = Button, Checkbutton, Entry, Frame, Label, LabelFrame, Menubutton, PanedWindow, Radiobutton, Scale, Scrollbar, Spinbox, Combobox, Notebook, Progressbar, Separator, Sizegrip, Treeview
+# --- Section 1 --- #
 
-1) App Root
-2) Main Window Frame
-3) Split into 5 Sections
-    1 - for directories at the top  (blender.exe, source, bould)
-    2 - for Notebook with tabs, this is for config (Will be the largest section). This where all the UI will send data the DB
-    3 - for Notebook with tabs but this is for looking at all the output data. (Manifest Lines || Validate Command || Build Command). Data is stored into list and is updated as data is writen to the DB
-    4 - last section from the bottom is just some helper function buttons, like pop open the docs page
-    5 - And the last section at the bottom is for the (Status Bar || Validate Button || Build Button)
+def blender_exe_entry_CB(event):
+    value = VAR__BLENDER_EXE.get()
+    widget = WIG__BLENDER_EXE
+    if value:
+        if os.path.isfile(value) and os.access(value, os.X_OK):
+            print(f"Valid executable : {value}")
+        else:
+            print(f"Invalid executable : {value}")
+            widget.delete(0, tk.END)
+            widget.insert(0, "Invalid")
+    else:
+        print("No path entered.")
+        widget.delete(0, tk.END)
+        widget.insert(0, "Invalid")
 
 
-Section 2 Notebook Tabs
+def blender_exe_btn_CB():
+    widget = WIG__BLENDER_EXE
+    file_types = (("All Files", "*.*"),)
+    file_path = filedialog.askopenfilename(title="Select Blender Executable", filetypes=file_types)
+    print(f"Selected Path : {file_path}")
+    if file_path and is_exe(file_path):
+        widget.delete(0, tk.END)
+        widget.insert(0, file_path)
 
-__________ General __________
-maintainer
-website
-name
-tagline
-tags
-id
-version
-type
-__________ Compatibility __________
-blender_version_min
-blender_version_max
-permissions
-platforms
-__________ Legal __________
-license
-copyright
-__________ Build __________
-wheels
-paths
-paths_exclude_pattern
+# --- Section 2 --- #
+# --- Section 3 --- #
+# --- Section 4 --- #
+# --- Section 5 --- #
+# --- Section 6 --- #
 
-'''
+########################•########################
+"""                 SECTIONS                  """
+########################•########################
+
+@try_except_decorator
+def build_section_1_PATHS(frame):
+    ''' Blender.exe | Source | Build '''
+
+    # Blender Exe Path
+    global WIG__BLENDER_EXE, VAR__BLENDER_EXE
+    # Var
+    VAR__BLENDER_EXE = tk.StringVar(value="")
+    # Label
+    label = tk.Label(frame, text="Blender")
+    label.pack(side=tk.LEFT, padx=5)
+    # Entry
+    WIG__BLENDER_EXE = tk.Entry(frame, textvariable=VAR__BLENDER_EXE)
+    WIG__BLENDER_EXE.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=5)
+    WIG__BLENDER_EXE.bind("<Return>", blender_exe_entry_CB)
+    # Button
+    button = tk.Button(frame, text="Open Executable", command=blender_exe_btn_CB)
+    button.pack(side=tk.LEFT, padx=5)
+
+
+
+
+@try_except_decorator
+def build_section_2_INFO(frame):
+    ''' Extension | Versions | Developer | License | Build '''
+
+    # Notebook
+    notebook = ttk.Notebook(frame)
+    notebook.grid(row=0, column=0, sticky="nsew")
+
+    # Configure
+    frame.grid_rowconfigure(0, weight=1)
+    frame.grid_columnconfigure(0, weight=1)
+
+    # Extension
+    ext_tab = tk.Frame(notebook)
+    tools_var = tk.StringVar(value="None")
+    for tool in ["Resizing", "Rotating"]:
+        radio_btn = tk.Radiobutton(ext_tab, text=tool, variable=tools_var, value=tool)
+        radio_btn.pack(anchor="w", padx=20, pady=5)
+
+    # Version
+    ver_tab = tk.Frame(notebook)
+    tools_var = tk.StringVar(value="None")
+    for tool in ["Resizing", "Rotating"]:
+        radio_btn = tk.Radiobutton(ver_tab, text=tool, variable=tools_var, value=tool)
+        radio_btn.pack(anchor="w", padx=20, pady=5)
+
+    # Developer
+    dev_tab = tk.Frame(notebook)
+    tools_var = tk.StringVar(value="None")
+    for tool in ["Resizing", "Rotating"]:
+        radio_btn = tk.Radiobutton(dev_tab, text=tool, variable=tools_var, value=tool)
+        radio_btn.pack(anchor="w", padx=20, pady=5)
+
+    # License
+    lic_tab = tk.Frame(notebook)
+    tools_var = tk.StringVar(value="None")
+    for tool in ["Resizing", "Rotating"]:
+        radio_btn = tk.Radiobutton(lic_tab, text=tool, variable=tools_var, value=tool)
+        radio_btn.pack(anchor="w", padx=20, pady=5)
+
+    # Build
+    bld_tab = tk.Frame(notebook)
+    tools_var = tk.StringVar(value="None")
+    for tool in ["Resizing", "Rotating"]:
+        radio_btn = tk.Radiobutton(bld_tab, text=tool, variable=tools_var, value=tool)
+        radio_btn.pack(anchor="w", padx=20, pady=5)
+
+    # Add Tabs
+    notebook.add(ext_tab, text="Extension")
+    notebook.add(ver_tab, text="Version")
+    notebook.add(dev_tab, text="Developer")
+    notebook.add(lic_tab, text="License")
+    notebook.add(bld_tab, text="Build")
+
+
+@try_except_decorator
+def build_section_3_PREVIEWS(frame):
+    ''' Manifest | Validate | Build '''
+    pass
+
+
+@try_except_decorator
+def build_section_4_UTILS(frame):
+    ''' Docs | Extensions '''
+    pass
+
+
+@try_except_decorator
+def build_section_5_STATUS(frame):
+    ''' Valid | Built '''
+    pass
+
+
+@try_except_decorator
+def build_section_6_ACTIONS(frame):
+    ''' Validate | Build '''
+    pass
+
+########################•########################
+"""                APPLICATION                """
+########################•########################
+
+APP_ROOT = None
+APP_NAME = "Blender Extension Creator"
+APP_WIDTH = 600
+APP_HEIGHT = 800
+APP_RESIZABLE = True
+
+
+@try_except_decorator
+def create_app():
+    global APP_ROOT
+    APP_ROOT = tk.Tk()
+    APP_ROOT.title(APP_NAME)
+    APP_ROOT.geometry(f"{APP_WIDTH}x{APP_HEIGHT}")
+    if APP_RESIZABLE:
+        APP_ROOT.resizable(True, True)
+    else:
+        APP_ROOT.resizable(False, False)
+
+
+@try_except_decorator
+def create_sections():
+    # Configure main grid
+    APP_ROOT.grid_columnconfigure(0, weight=1)
+    APP_ROOT.grid_rowconfigure(0, weight=1)
+
+    # Colors
+    color_a = "lightgray"
+    color_b = "white"
+
+    # Create frames
+    frame_1 = tk.Frame(APP_ROOT, padx=2, pady=2, bg=color_a)
+    frame_2 = tk.Frame(APP_ROOT, padx=2, pady=2, bg=color_b)
+    frame_3 = tk.Frame(APP_ROOT, padx=2, pady=2, bg=color_a)
+    frame_4 = tk.Frame(APP_ROOT, padx=2, pady=2, bg=color_b)
+    frame_5 = tk.Frame(APP_ROOT, padx=2, pady=2, bg=color_a)
+    frame_6 = tk.Frame(APP_ROOT, padx=2, pady=2, bg=color_b)
+
+    # Rows
+    frame_1.grid(row=0, column=0, sticky="nsew")
+    frame_2.grid(row=1, column=0, sticky="nsew")
+    frame_3.grid(row=2, column=0, sticky="nsew")
+    frame_4.grid(row=3, column=0, sticky="nsew")
+    frame_5.grid(row=4, column=0, sticky="nsew")
+    frame_6.grid(row=5, column=0, sticky="nsew")
+
+    # Configure Frames
+    APP_ROOT.grid_rowconfigure(0, weight=1)
+    APP_ROOT.grid_rowconfigure(1, weight=6)
+    APP_ROOT.grid_rowconfigure(2, weight=4)
+    APP_ROOT.grid_rowconfigure(3, weight=1)
+    APP_ROOT.grid_rowconfigure(4, weight=1)
+    APP_ROOT.grid_rowconfigure(5, weight=1)
+
+    # Sections
+    build_section_1_PATHS(frame_1)
+    build_section_2_INFO(frame_2)
+    build_section_3_PREVIEWS(frame_3)
+    build_section_4_UTILS(frame_4)
+    build_section_5_STATUS(frame_5)
+    build_section_6_ACTIONS(frame_6)
+
+
+if __name__ == "__main__":
+    # set_licenses()
+    create_app()
+    create_sections()
+    if APP_ROOT:
+        APP_ROOT.mainloop()
+    else:
+        print("Setup Failed")
+
 
 class FilePickController:
     def __init__(self, parent, label="Blender", file_types=(("All Files", "*.*"),)):
@@ -1491,15 +709,3 @@ class App:
         self.ext_version = VerController(self.frame, label="Extension Version")
         self.b3d_ver_min = VerController(self.frame, label="Blender Version Min", min_ver=(4,2,0))
         self.b3d_ver_max = VerController(self.frame, label="Blender Version Max", min_ver=(4,2,0), add_use_check=True)
-
-########################•########################
-"""                APPLICATION                """
-########################•########################
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    root.title("Blender Extension Creator")
-    root.geometry("600x800")
-    root.resizable(False, False)
-    app = App(root)
-    root.mainloop()
