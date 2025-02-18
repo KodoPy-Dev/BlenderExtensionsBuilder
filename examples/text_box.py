@@ -1,22 +1,44 @@
-import tkinter as tk
+from tkinter import *
+from tkinter import ttk
 
-root = tk.Tk()
+root = Tk()
 
-# Create a Text widget
-text_box = tk.Text(root, height=10, width=50)
-text_box.pack(side=tk.LEFT, fill=tk.Y)
+content = ttk.Frame(root, padding=(3,3,12,12))
+frame = ttk.Frame(content, borderwidth=5, relief="ridge", width=200, height=100)
+namelbl = ttk.Label(content, text="Name")
+name = ttk.Entry(content)
 
-# Insert some text
-text_box.insert(tk.END, "This is some read-only text.\n" * 20)  # Add multiple lines for scrolling
+onevar = BooleanVar()
+twovar = BooleanVar()
+threevar = BooleanVar()
 
-# Make the text box read-only
-text_box.config(state=tk.DISABLED)
+onevar.set(True)
+twovar.set(False)
+threevar.set(True)
 
-# Create a Scrollbar widget and link it to the Text widget
-scrollbar = tk.Scrollbar(root, command=text_box.yview)
-scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+one = ttk.Checkbutton(content, text="One", variable=onevar, onvalue=True)
+two = ttk.Checkbutton(content, text="Two", variable=twovar, onvalue=True)
+three = ttk.Checkbutton(content, text="Three", variable=threevar, onvalue=True)
+ok = ttk.Button(content, text="Okay")
+cancel = ttk.Button(content, text="Cancel")
 
-# Link the scrollbar to the Text widget
-text_box.config(yscrollcommand=scrollbar.set)
+content.grid(column=0, row=0, sticky=(N, S, E, W))
+frame.grid(column=0, row=0, columnspan=3, rowspan=2, sticky=(N, S, E, W))
+namelbl.grid(column=3, row=0, columnspan=2, sticky=(N, W), padx=5)
+name.grid(column=3, row=1, columnspan=2, sticky=(N,E,W), pady=5, padx=5)
+one.grid(column=0, row=3)
+two.grid(column=1, row=3)
+three.grid(column=2, row=3)
+ok.grid(column=3, row=3)
+cancel.grid(column=4, row=3)
+
+root.columnconfigure(0, weight=1)
+root.rowconfigure(0, weight=1)
+content.columnconfigure(0, weight=3)
+content.columnconfigure(1, weight=3)
+content.columnconfigure(2, weight=3)
+content.columnconfigure(3, weight=1)
+content.columnconfigure(4, weight=1)
+content.rowconfigure(1, weight=1)
 
 root.mainloop()
