@@ -18,6 +18,19 @@ import requests
 from bs4 import BeautifulSoup
 
 ########################•########################
+"""                 DECORATORS                """
+########################•########################
+
+def try_except_decorator(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            print(f"ERROR : {func.__name__}()")
+            traceback.print_exc()
+    return wrapper
+
+########################•########################
 """                   OPTIONS                 """
 ########################•########################
 
@@ -94,43 +107,172 @@ PATH_EXCLUDE_PATTERNS = [
   "/*.zip",
 ]
 
+########################•########################
+"""                 VALIDATORS                """
+########################•########################
+
+def create_safe_name(name=""):
+    name = name.strip()
+    name = re.sub(r'[<>:"/\\|?*.]', '', name)
+    name = re.sub(r'[\x00-\x1f\x7f]', '', name)
+    name = name.replace(" ", "_")
+    name = name[:255]
+    return name
+
+
+def get_file_extension(file_path):
+    return Path(file_path).suffix.lower()
+
+
+is_integer     = lambda item: isinstance(item, int)
+is_string      = lambda item: isinstance(item, str) and bool(item.strip())
+is_float       = lambda item: isinstance(item, float)
+is_tuple       = lambda item: isinstance(item, tuple)
+is_path        = lambda item: isinstance(item, (str, Path)) and Path(item).is_file()
+is_dir         = lambda item: isinstance(item, (str, Path)) and Path(item).exists()
+is_exe         = lambda item: is_path(item) and os.access(item, os.X_OK)
+is_folder_name = lambda item: is_string(item) and item == create_safe_name(name=item)
+is_file_name   = lambda item: is_string(item) and len(os.path.splitext(item)) == 2 and all(is_string(sub) for sub in os.path.splitext(item))
+is_iterable    = lambda item: isinstance(item, Iterable) and not isinstance(item, (str, bytes))
+is_all_strs    = lambda item: is_iterable(item) and all(is_string(sub) for sub in item)
+is_ver_str     = lambda item: is_string(item) and len(item.split(".")) == 3 and all(sub.isdigit() for sub in item.split("."))
+is_email       = lambda item: is_string(item) and bool(re.match(r"[^@]+@[^@]+\.[^@]+", item))
+is_website     = lambda item: is_string(item) and bool(re.match(r'^(http[s]?://)?([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,6}(/[\w\-._~:/?#[\]@!$&\'()*+,;=]*)?$', item))
+is_str_int     = lambda item: is_string(item) and item.isdigit()
+
+does_file_ext_match           = lambda file_path, file_ext : is_path(file_path) and is_string(file_ext) and get_file_extension(file_path) == file_ext.lower()
+does_file_name_match_no_ext   = lambda file_path, file_name: is_path(file_path) and is_string(file_name) and Path(file_path).name == file_name
+does_file_name_match_with_ext = lambda file_path, file_name: is_path(file_path) and is_file_name(file_name) and Path(file_path).name.lower() == file_name.lower()
 
 ########################•########################
 """                  WIDGETS                  """
 ########################•########################
 
-class FolderPickerWidget():
-    def __init__(self, frame, row=0, column=0, label_text="Select Path", pick_folder=True):
-        self.frame = frame
-        self.pick_folder = pick_folder
+class COLORS:
+    BLACK = "#050D0F" # Black
+    WHITE = "#F3F3F3" # White
+    BG1 = "#EEEEEE" # Light Grey
+    BG2 = "#CCCCCC" # Medium Grey
+    BG3 = "#AAAAAA" # Dark Grey
+    VALID = "#4ceb34" # Gren
+    ERROR = "#E56B6F" # Red
 
-        # Components
-        self.label  = tk.Label(self.frame, text=label_text)
+
+class Observers:
+    def __init__(self):
+        self.listeners = []
+
+
+    def add_callback(self, callback=None):
+        if callback is None: return
+        if not callable(callback): return
+        if callback in self.listeners: return
+        self.listeners.append(callback)
+
+
+    def remove_callback(self, callback=None):
+        if callback in self.listeners:
+            self.listeners.remove(callback)
+
+
+    def update(self, value=None):
+        if self.listeners:
+            for listener in self.listeners:
+                if callable(listener):
+                    listener(value)
+
+
+class FolderPickerWidget:
+    def __init__(self, parent, row=0, column=0, padx=0, pady=0, label_text="Select Path", label_min_w=150, bg=COLORS.BG1, pick_mode='DIR'):
+        '''
+        pick_mode : DIR (folder), FILE (file), EXE (executable)
+        '''
+        # Parent
+        self.parent = parent
+
+        # Create Frame
+        self.frame = tk.Frame(self.parent, padx=padx, pady=pady, bg=bg)
+
+        # Add Frame
+        self.frame.grid(row=row, column=column, sticky="we")
+
+        # Configure Layout
+        self.frame.grid_columnconfigure(0, minsize=label_min_w)
+        self.frame.grid_columnconfigure(1, weight=1)
+        self.frame.grid_columnconfigure(2, minsize=75)
+        self.frame.grid_rowconfigure(0, weight=1)
+
+        # Props
+        self.observers = Observers()
+        self.pick_mode = pick_mode
+
+        # Create Widgets
+        self.label  = tk.Label(self.frame, text=label_text, bg=bg)
         self.entry  = tk.Entry(self.frame)
-        self.button = tk.Button(self.frame, text="Open", command=self.browse)
+        self.button = tk.Button(self.frame, text="Open", command=self.browse, bg=COLORS.BLACK, fg=COLORS.WHITE)
 
-        # Position
-        col = column
-        self.label.grid(row=row, column=col, sticky="w", padx=5)
-        self.entry.grid(row=row, column=col+1, sticky="we", padx=5)
-        self.button.grid(row=row, column=col+2, sticky="e", padx=5)
+        # Add Widgets
+        self.label.grid( row=0, column=0, sticky="we", padx=5)
+        self.entry.grid( row=0, column=1, sticky="we", padx=5)
+        self.button.grid(row=0, column=2, sticky="we", padx=5)
 
+        # Style
+        self.entry.config(highlightthickness=1, highlightbackground=COLORS.BLACK, highlightcolor=COLORS.BLACK)
 
-    def browse(self):
-        if self.pick_folder:
-            path = filedialog.askdirectory()
-        else:
-            path = filedialog.askopenfilename()
-        if path:
-            self.entry.delete(0, tk.END)
-            self.entry.insert(0, path)
+        # Bind
+        self.entry.bind("<FocusOut>", self.callback_validator)
+        self.entry.bind("<Return>", self.callback_validator)
 
 
     def get_value(self):
         return self.entry.get()
 
 
-class TabsWidget():
+    def callback_validator(self, event=None):
+        value = self.get_value()
+        if not value:
+            self.entry.config(highlightthickness=1, highlightbackground=COLORS.BLACK, highlightcolor=COLORS.BLACK)
+            return
+        valid = False
+        if self.pick_mode == 'DIR': valid = is_dir(value)
+        elif self.pick_mode == 'EXE': valid = is_exe(value)
+        elif self.pick_mode == 'FILE': valid = is_path(value)
+        if valid:
+            self.entry.config(highlightthickness=1, highlightbackground=COLORS.VALID, highlightcolor=COLORS.VALID)
+        else:
+            self.entry.config(highlightthickness=1, highlightbackground=COLORS.ERROR, highlightcolor=COLORS.ERROR)
+        # Observers
+        self.observers.update(value)
+
+
+    def browse(self):
+        value = None
+        # Folder
+        if self.pick_mode == 'DIR':
+            value = filedialog.askdirectory()
+            value = value if is_dir(value) else None
+        # Exe
+        elif self.pick_mode == 'EXE':
+            filetypes = []
+            if sys.platform == "win32":
+                filetypes.append(("Executable files", "*.exe"))
+            filetypes.append(("All files", "*.*"))
+            value = filedialog.askopenfilename(title="Select Executable", filetypes=filetypes)
+            value = value if is_exe(value) else None
+        # File
+        elif self.pick_mode == 'FILE':
+            filetypes = [("All files", "*.*")]
+            value = filedialog.askopenfilename(title="Select Executable", filetypes=filetypes)
+            value = value if is_path(value) else None
+        # Assign
+        if value:
+            self.entry.delete(0, tk.END)
+            self.entry.insert(0, value)
+        # Validate
+        self.callback_validator()
+
+
+class TabsWidget:
     def __init__(self, frame, row=0, column=0, tab_names=[]):
         self.frame = frame
         self.tabs = {}
@@ -154,62 +296,92 @@ class TabsWidget():
         return None
 
 
-class EntryWidget():
-    def __init__(self, frame, row=0, column=0, label_text="Entry", filter_map=dict(), char_limit=0):
-        self.frame = frame
+class EntryWidget:
+    def __init__(self, parent, row=0, column=0, padx=0, pady=0, label_text="Entry", label_min_w=150, bg=COLORS.BG1, filter_map=dict(), char_limit=0):
+        # Parent
+        self.parent = parent
+
+        # Create Frame
+        self.frame = tk.Frame(self.parent, padx=padx, pady=pady, bg=bg)
+
+        # Add Frame
+        self.frame.grid(row=row, column=column, sticky="we")
+
+        # Configure Layout
+        self.frame.grid_columnconfigure(0, minsize=label_min_w)
+        self.frame.grid_columnconfigure(1, weight=1)
+        self.frame.grid_rowconfigure(0, weight=1)
+
+        # Props
+        self.observers = Observers()
         self.filter_map = filter_map
         self.char_limit = char_limit
 
-        # Components
+        # Create Widgets
         self.label = tk.Label(self.frame, text=label_text)
         self.entry = tk.Entry(self.frame)
 
-        # Position
-        col = column
-        self.label.grid(row=row, column=col, sticky="w", padx=5)
-        self.entry.grid(row=row, column=col+1, sticky="we", padx=5)
+        # Add Widgets
+        self.label.grid(row=0, column=0, sticky="w", padx=5)
+        self.entry.grid(row=0, column=1, sticky="we", padx=5)
 
-        # Events
-        if self.filter_map:
-            self.entry.bind("<KeyPress>", self.process_filter, add="+")
-        if self.char_limit:
-            self.entry.bind("<KeyPress>", self.process_char_limit, add="+")
+        # Bind
+        self.entry.bind("<FocusOut>", self.entry_callback)
+        self.entry.bind("<Return>", self.entry_callback)
+        self.entry.bind("<KeyPress>", self.entry_callback)
 
 
     def get_value(self):
         return self.entry.get()
 
 
-    def process_filter(self, event):
-        current = self.get_value()
-        composed = [self.filter_map.get(char, char) for char in current]
-        new_value = "".join(composed)
-        if current != new_value:
+    def entry_callback(self, event):
+        value = self.get_value()
+
+        # Filter
+        if value and self.filter_map:
+            value = "".join([self.filter_map.get(char, char) for char in value])
             self.entry.delete(0, tk.END)
-            self.entry.insert(0, new_value)
+            self.entry.insert(0, value)
+
+        # Limit
+        if value and self.char_limit > 0:
+            if len(value) > self.char_limit:
+                value = value[:self.char_limit]
+                self.entry.delete(0, tk.END)
+                self.entry.insert(0, value)
+
+        # Observers
+        self.observers.update(value)
 
 
-    def process_char_limit(self, event):
-        current = self.get_value()
-        if current and len(current) > self.char_limit:
-            new_value = current[:self.char_limit]
-            self.entry.delete(0, tk.END)
-            self.entry.insert(0, new_value)
+class DropdownWidget:
+    def __init__(self, parent, row=0, column=0, padx=0, pady=0, label_text="Dropdown", label_min_w=150, bg=COLORS.BG1, options=[], default=""):
+        # Parent
+        self.parent = parent
 
+        # Create Frame
+        self.frame = tk.Frame(self.parent, padx=padx, pady=pady, bg=bg)
 
-class DropdownWidget():
-    def __init__(self, frame, row=0, column=0, label_text="Dropdown", options=[], default=""):
-        self.frame = frame
+        # Add Frame
+        self.frame.grid(row=row, column=column, sticky="we")
+
+        # Configure Layout
+        self.frame.grid_columnconfigure(0, minsize=label_min_w)
+        self.frame.grid_columnconfigure(1, weight=1)
+        self.frame.grid_rowconfigure(0, weight=1)
+
+        # Props
+        self.observers = Observers()
         self.options = options
 
-        # Components
+        # Create Widgets
         self.label = tk.Label(self.frame, text=label_text)
         self.dropdown = ttk.Combobox(self.frame, values=self.options, state="readonly")
 
-        # Position
-        col = column
-        self.label.grid(row=row, column=col, sticky="w", padx=5)
-        self.dropdown.grid(row=row, column=col+1, sticky="we", padx=5)
+        # Add Widgets
+        self.label.grid(row=0, column=0, sticky="w", padx=5)
+        self.dropdown.grid(row=0, column=1, sticky="w", padx=5)
 
         # Values
         if default and default in self.options:
@@ -217,173 +389,330 @@ class DropdownWidget():
         elif self.options:
             self.dropdown.set(self.options[0])
 
+        # Binds
+        self.dropdown.bind("<<ComboboxSelected>>", self.dropdown_callback)
+
 
     def get_value(self):
         return self.dropdown.get()
 
 
-    def set_value(self, value):
-        if value in self.options:
-            self.dropdown.set(value)
+    def dropdown_callback(self, event):
+        value = self.get_value()
+        self.observers.update(value)
 
 
 class VersionWidget:
-    def __init__(self, frame, row=0, column=0, label_text="Version", min_ver=(0, 0, 0), add_use_check=False):
-        self.frame = frame
+    def __init__(self, parent, row=0, column=0, padx=0, pady=0, label_text="Version", label_min_w=150, bg=COLORS.BG1, min_ver=(0, 0, 0), allow_ignore=False):
+        # Parent
+        self.parent = parent
+
+        # Create Frame
+        self.frame = tk.Frame(self.parent, padx=padx, pady=pady, bg=bg)
+
+        # Add Frame
+        self.frame.grid(row=row, column=column, sticky="we")
+
+        # Configure Layout
+        self.frame.grid_rowconfigure(0, weight=1)
+        self.frame.grid_columnconfigure(0, minsize=label_min_w)
+        if allow_ignore:
+            self.frame.grid_columnconfigure(1, weight=1)
+            self.frame.grid_columnconfigure(2, weight=1)
+            self.frame.grid_columnconfigure(3, weight=2)
+            self.frame.grid_columnconfigure(4, weight=1)
+            self.frame.grid_columnconfigure(5, weight=2)
+            self.frame.grid_columnconfigure(6, weight=1)
+        else:
+            self.frame.grid_columnconfigure(1, weight=1)
+            self.frame.grid_columnconfigure(2, weight=2)
+            self.frame.grid_columnconfigure(3, weight=1)
+            self.frame.grid_columnconfigure(4, weight=2)
+            self.frame.grid_columnconfigure(5, weight=1)
 
         # Props
+        self.observers = Observers()
         self.var_major = tk.IntVar(value=min_ver[0])
         self.var_minor = tk.IntVar(value=min_ver[1])
         self.var_patch = tk.IntVar(value=min_ver[2])
-        self.var_use = None
 
-
-        # self.check_box = None
-        # # Checkbutton variable (optional)
-        # if add_use_check:
-        #     self.var_use = tk.BooleanVar(value=False)
-        # # Check Box
-        # if add_use_check:
-        #     self.check_box = tk.Checkbutton(self.frame, text="Use", variable=self.var_use, command=self.com_check_box)
-        #     self.check_box.grid(row=row, column=column, sticky="w", padx=5)
-
-        # # Initially hide spinboxes if "Use" checkbox exists and is unchecked
-        # if add_use_check:
-        #     self.com_check_box()
-
-
-        # Label
+        # Create Label
         self.label = tk.Label(self.frame, text=label_text)
-        self.label.grid(row=row, column=column, sticky="w", padx=5)
 
-        # Spin Frame
-        self.spin_frame = tk.Frame(self.frame)
-        self.spin_frame.grid(row=row+1, column=column+1, sticky="nsew")
-        self.spin_frame.grid_rowconfigure(0, weight=1)
-        self.spin_frame.grid_columnconfigure(0, weight=1)
-        self.spin_frame.grid_columnconfigure(1, weight=1)
-        self.spin_frame.grid_columnconfigure(2, weight=1)
+        # Add Label
+        self.label.grid(row=0, column=0, sticky="w", padx=5)
 
-        self.spin_major = tk.Spinbox(self.spin_frame, from_=min_ver[0], to=sys.maxsize, textvariable=self.var_major)
-        self.spin_minor = tk.Spinbox(self.spin_frame, from_=min_ver[1], to=sys.maxsize, textvariable=self.var_minor)
-        self.spin_patch = tk.Spinbox(self.spin_frame, from_=min_ver[2], to=sys.maxsize, textvariable=self.var_patch)
-        self.spin_major.grid(row=0, column=0, sticky="w" , padx=2)
-        self.spin_minor.grid(row=0, column=1, sticky="we", padx=2)
-        self.spin_patch.grid(row=0, column=2, sticky="e" , padx=2)
+        # Create Version Labels
+        self.label_major = tk.Label(self.frame, text="Major")
+        self.label_minor = tk.Label(self.frame, text="Minor")
+        self.label_patch = tk.Label(self.frame, text="Patch")
+
+        # Register Validator
+        validate_cmd = self.frame.register(is_str_int)
+
+        # Create Spin Boxes
+        self.spin_major = tk.Spinbox(self.frame, from_=min_ver[0], to=sys.maxsize, textvariable=self.var_major, command=self.spinbox_callback, validate="key", validatecommand=(validate_cmd, "%P"))
+        self.spin_minor = tk.Spinbox(self.frame, from_=min_ver[1], to=sys.maxsize, textvariable=self.var_minor, command=self.spinbox_callback, validate="key", validatecommand=(validate_cmd, "%P"))
+        self.spin_patch = tk.Spinbox(self.frame, from_=min_ver[2], to=sys.maxsize, textvariable=self.var_patch, command=self.spinbox_callback, validate="key", validatecommand=(validate_cmd, "%P"))
+
+        column = 1
+
+        # Ignore Checkbox
+        self.ignore_var = tk.BooleanVar()
+        self.ignore_checkbox = None
+        if allow_ignore:
+            self.ignore_checkbox = tk.Checkbutton(self.frame, text="Ignore", command=self.ignore_checkbox_callback)
+            self.ignore_checkbox.grid(row=0, column=1, sticky="w", padx=1)
+            column += 1
+
+        # Add Major
+        self.label_major.grid(row=0, column=column + 0, sticky="w", padx=1)
+        self.spin_major.grid( row=0, column=column + 1, sticky="w", padx=1)
+
+        # Add Minor
+        self.label_minor.grid(row=0, column=column + 2, sticky="w", padx=1)
+        self.spin_minor.grid( row=0, column=column + 3, sticky="w", padx=1)
+
+        # Add Patch
+        self.label_patch.grid(row=0, column=column + 4, sticky="w", padx=1)
+        self.spin_patch.grid( row=0, column=column + 5, sticky="w", padx=1)
 
 
-
-    def com_check_box(self):
-        """Enable/Disable the version spinboxes based on checkbox state."""
-        state = tk.NORMAL if self.var_use.get() else tk.DISABLED
-        self.spin_major.config(state=state)
-        self.spin_minor.config(state=state)
-        self.spin_patch.config(state=state)
-
-    def get_version(self):
-        """Return the version tuple if enabled, else None."""
-        if self.check_box and self.var_use and not self.var_use.get():
-            return None
+    def get_value(self):
+        if isinstance(self.ignore_checkbox, tk.Checkbutton):
+            if self.ignore_checkbox.get():
+                return None
         return self.var_major.get(), self.var_minor.get(), self.var_patch.get()
 
+
+    def spinbox_callback(self):
+        value = self.get_value()
+        self.observers.update(value)
+
+
+    def ignore_checkbox_callback(self):
+        if isinstance(self.ignore_checkbox, tk.Checkbutton):
+            if self.ignore_checkbox.cget():
+                self.var_major.config(state="disabled")
+                self.var_minor.config(state="disabled")
+                self.var_patch.config(state="disabled")
+            else:
+                self.var_major.config(state="normal")
+                self.var_minor.config(state="normal")
+                self.var_patch.config(state="normal")
+            self.spinbox_callback()
+
+
+class ListPickWidget:
+    def __init__(self, parent, row=0, column=0, padx=0, pady=0, label_text="Item Picker", label_min_w=150, bg=COLORS.BG1, items=None):
+        # Parent
+        self.parent = parent
+
+        # Create Frame
+        self.frame = tk.Frame(self.parent, padx=padx, pady=pady, bg=bg)
+
+        # Add Frame
+        self.frame.grid(row=row, column=column, sticky="we")
+
+        # Configure Layout
+        self.frame.grid_rowconfigure(0, weight=1)
+        self.frame.grid_columnconfigure(0, minsize=label_min_w)
+        self.frame.grid_columnconfigure(1, weight=1)
+
+        # Props
+        self.observers = Observers()
+
+        # Create Label
+        self.label = tk.Label(self.frame, text=label_text, bg=bg, fg=COLORS.BLACK)
+
+        # Add Label
+        self.label.grid(row=0, column=0, sticky="w", padx=5)
+
+        # Create Scrollbar
+        self.scrollbar = tk.Scrollbar(self.frame, orient=tk.VERTICAL)
+
+        # Create List Box
+        self.listbox = tk.Listbox(self.frame, selectmode=tk.MULTIPLE, width=50, height=10, yscrollcommand=self.scrollbar.set)
+
+        # Add Scrollbar
+        self.scrollbar.config(command=self.listbox.yview)
+        self.scrollbar.grid(row=1, column=2, sticky="ns")
+
+        # Add Listbox
+        self.listbox.grid(row=1, column=1, sticky="we")
+
+        # Populate Listbox
+        self.update_listbox(items)
+
+        # Bind
+        self.listbox.bind("<<ListboxSelect>>", self.listbox_callback)
+
+
+    def get_value(self):
+        selected_indices = self.listbox.curselection()
+        return [self.listbox.get(i) for i in selected_indices]
+
+
+    def listbox_callback(self, event=None):
+        value = self.get_value()
+        self.observers.update(value)
+
+
+    def update_listbox(self, items):
+        self.listbox.delete(0, tk.END)
+        for item in items:
+            if isinstance(item, str):
+                self.listbox.insert(tk.END, item)
+        self.listbox_callback()
+
+########################•########################
+"""                 COMMANDERS                """
+########################•########################
+
+@try_except_decorator
+def set_licenses():
+    global LICENSES
+    url = 'https://spdx.org/licenses/'
+    response = requests.get(url)
+    response.raise_for_status()
+    soup = BeautifulSoup(response.text, 'html.parser')
+    table = soup.find('table')
+    licenses = {}
+    for row in table.find_all('tr')[1:]:
+        columns = row.find_all('td')
+        if len(columns) >= 2:
+            full_name = columns[0].get_text(strip=True).replace('\"', '')
+            identifier = columns[1].get_text(strip=True).replace('\"', '')
+            if full_name and identifier:
+                licenses[full_name] = identifier
+    for key, value in licenses.items():
+        LICENSES[key] = f"SPDX:{value}"
 
 ########################•########################
 """                APPLICATION                """
 ########################•########################
 
 APP_NAME = "Blender Extension Creator"
-APP_WIDTH = 600
-APP_HEIGHT = 800
-APP_RESIZABLE = True
-
-COL_WHITE = 'white'
-COL_GREY  = '#f0f0f0'
-
+LABEL_WIDTH = 150
 
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
         root = self
         root.title(APP_NAME)
-        root.geometry(f"{APP_WIDTH}x{APP_HEIGHT}")
-        root.resizable(APP_RESIZABLE, APP_RESIZABLE)
+        root.resizable(False, False)
 
-        # Configure main grid
+    @try_except_decorator
+    def setup(self):
+        root = self
+        # Configure Layout
         root.grid_columnconfigure(0, weight=1)
         root.grid_rowconfigure(0, weight=1)
-
+        root.grid_rowconfigure(1, weight=10)
+        root.grid_rowconfigure(2, weight=10)
+        root.grid_rowconfigure(3, weight=1)
+        root.grid_rowconfigure(4, weight=1)
+        root.grid_rowconfigure(5, weight=1)
         # Create frames
-        frame_1 = tk.Frame(root, padx=5, pady=5, borderwidth=1, relief="solid")
-        frame_2 = tk.Frame(root, padx=5, pady=5, borderwidth=1, relief="solid")
-        frame_3 = tk.Frame(root, padx=5, pady=5, borderwidth=1, relief="solid")
-        frame_4 = tk.Frame(root, padx=5, pady=5, borderwidth=1, relief="solid")
-        frame_5 = tk.Frame(root, padx=5, pady=5, borderwidth=1, relief="solid")
-        frame_6 = tk.Frame(root, padx=5, pady=5, borderwidth=1, relief="solid")
-
-        # Rows
+        frame_1 = tk.Frame(root, padx=5, pady=5, borderwidth=2, relief="groove", background=COLORS.BG3)
+        frame_2 = tk.Frame(root, padx=5, pady=5, borderwidth=2, relief="groove", background=COLORS.BG2)
+        frame_3 = tk.Frame(root, padx=5, pady=5, borderwidth=2, relief="groove", background=COLORS.BG1)
+        frame_4 = tk.Frame(root, padx=5, pady=5, borderwidth=2, relief="groove", background=COLORS.BG2)
+        frame_5 = tk.Frame(root, padx=5, pady=5, borderwidth=2, relief="groove", background=COLORS.BG1)
+        frame_6 = tk.Frame(root, padx=5, pady=5, borderwidth=2, relief="groove", background=COLORS.BG2)
+        # Add Frames
         frame_1.grid(row=0, column=0, sticky="nsew")
         frame_2.grid(row=1, column=0, sticky="nsew")
         frame_3.grid(row=2, column=0, sticky="nsew")
         frame_4.grid(row=3, column=0, sticky="nsew")
         frame_5.grid(row=4, column=0, sticky="nsew")
         frame_6.grid(row=5, column=0, sticky="nsew")
+        # Build
+        self.build_frame_1(frame=frame_1)
+        self.build_frame_2(frame=frame_2)
+        self.build_frame_3(frame=frame_3)
+        self.build_frame_4(frame=frame_4)
+        self.build_frame_5(frame=frame_5)
+        self.build_frame_6(frame=frame_6)
 
-        # Position Frames
-        root.grid_rowconfigure(0, weight=1)
-        root.grid_rowconfigure(1, weight=30)
-        root.grid_rowconfigure(2, weight=10)
-        root.grid_rowconfigure(3, weight=1)
-        root.grid_rowconfigure(4, weight=1)
-        root.grid_rowconfigure(5, weight=1)
 
-        # --- Frame 1 --- #
-
-        # Configure Frame
-        frame_1.grid_columnconfigure(0, weight=1)
-        frame_1.grid_columnconfigure(1, weight=5)
-        frame_1.grid_columnconfigure(2, weight=1)
-
+    def build_frame_1(self, frame):
+        # Configure Layout
+        frame.grid_columnconfigure(0, weight=1)
+        frame.grid_rowconfigure(0, weight=1)
+        frame.grid_rowconfigure(1, weight=1)
+        frame.grid_rowconfigure(2, weight=1)
         # Widgets
-        self.blender_picker = FolderPickerWidget(frame_1, row=0, column=0, label_text="Choose Blender Exe", pick_folder=False)
-        self.source_picker  = FolderPickerWidget(frame_1, row=1, column=0, label_text="Choose Source Dir", pick_folder=True)
-        self.build_picker   = FolderPickerWidget(frame_1, row=2, column=0, label_text="Choose Build Dir:", pick_folder=True)
+        self.blender_picker = FolderPickerWidget(frame, row=0, column=0, padx=5, pady=5, label_text="Blender Exe Path", label_min_w=LABEL_WIDTH, bg=COLORS.BG3, pick_mode='EXE')
+        self.source_picker  = FolderPickerWidget(frame, row=1, column=0, padx=5, pady=5, label_text="Source Directory", label_min_w=LABEL_WIDTH, bg=COLORS.BG3, pick_mode='DIR')
+        self.build_picker   = FolderPickerWidget(frame, row=2, column=0, padx=5, pady=5, label_text="Build Directory" , label_min_w=LABEL_WIDTH, bg=COLORS.BG3, pick_mode='DIR')
 
-        # --- Frame 2 --- #
 
+    def build_frame_2(self, frame):
         # Configure Frame
-        frame_2.grid_rowconfigure(0, weight=1)
-        frame_2.grid_columnconfigure(0, weight=1)
-
+        frame.grid_columnconfigure(0, weight=1)
+        frame.grid_rowconfigure(0, weight=1)
         # Tabs
-        self.info_tabs = TabsWidget(frame_2, row=0, column=0, tab_names=["Extension", "Version", "Developer", "License", "Build"])
+        self.info_tabs = TabsWidget(frame, row=0, column=0, tab_names=["Extension", "Developer", "License", "Build"])
 
-        # Tab 1 - Extension -
+        # --- [Extension] -- #
+
+        # Configure Tab
         tab_1 = self.info_tabs.get_tab_frame(tab_name="Extension")
-        tab_1.grid_columnconfigure(0, weight=1)
-        tab_1.grid_columnconfigure(1, weight=4)
+        tab_1.grid_columnconfigure(0, weight=1, minsize=100)
+        tab_1.grid_columnconfigure(1, weight=1)
+        tab_1.grid_rowconfigure(0, weight=1)
+        tab_1.grid_rowconfigure(1, weight=1)
+        tab_1.grid_rowconfigure(2, weight=1)
+        tab_1.grid_rowconfigure(3, weight=1)
+        tab_1.grid_rowconfigure(4, weight=1)
+        tab_1.grid_rowconfigure(5, weight=1)
 
         # Widgets
-        self.id_entry      = EntryWidget(tab_1   , row=0, column=0, label_text="Extension ID"     , filter_map={' ':'_'})
-        self.name_entry    = EntryWidget(tab_1   , row=1, column=0, label_text="Extension Name"   , filter_map=None)
-        self.ext_version   = VersionWidget(tab_1 , row=2, column=0, label_text="Extension Version", min_ver=(0,0,0), add_use_check=False)
-        self.tagline_entry = EntryWidget(tab_1   , row=3, column=0, label_text="Extension Tagline", filter_map=None, char_limit=64)
-        self.type_dropdown = DropdownWidget(tab_1, row=4, column=0, label_text="Extension Type"   , options=EXTENSION_TYPES, default="add-on")
+        self.id_entry      = EntryWidget(   tab_1, row=0, column=0, padx=5, pady=5, label_text="ID"             , label_min_w=LABEL_WIDTH, filter_map={' ':'_'})
+        self.name_entry    = EntryWidget(   tab_1, row=1, column=0, padx=5, pady=5, label_text="Name"           , label_min_w=LABEL_WIDTH, filter_map=None)
+        self.ext_version   = VersionWidget( tab_1, row=2, column=0, padx=5, pady=5, label_text="Version"        , label_min_w=LABEL_WIDTH, min_ver=(0,0,0))
+        self.tagline_entry = EntryWidget(   tab_1, row=3, column=0, padx=5, pady=5, label_text="Tagline"        , label_min_w=LABEL_WIDTH, filter_map=None, char_limit=64)
+        self.type_dropdown = DropdownWidget(tab_1, row=4, column=0, padx=5, pady=5, label_text="Type"           , label_min_w=LABEL_WIDTH, options=EXTENSION_TYPES, default="add-on")
+        self.tags_picker   = ListPickWidget(tab_1, row=5, column=0, padx=5, pady=5, label_text="Tags"           , label_min_w=LABEL_WIDTH, bg=COLORS.BG1, items=ADDON_TAGS)
+        self.blender_min   = VersionWidget( tab_1, row=6, column=0, padx=5, pady=5, label_text="Blender Min Ver", label_min_w=LABEL_WIDTH, min_ver=(4,2,0))
+        self.blender_max   = VersionWidget( tab_1, row=7, column=0, padx=5, pady=5, label_text="Blender Max Ver", label_min_w=LABEL_WIDTH, min_ver=(4,2,0), allow_ignore=True)
+
+        # Callbacks
+        self.type_dropdown.observers.add_callback(callback=self.callback_extension_type_change)
 
 
-
-        # | tags                   | X        | Extension | Pick tags based on type
-
-
-        # --- Frame 3 --- #
+    def build_frame_3(self, frame):
 
         # Configure Frame
-        frame_3.grid_rowconfigure(0, weight=1)
-        frame_3.grid_columnconfigure(0, weight=1)
+        frame.grid_columnconfigure(0, weight=1)
+        frame.grid_rowconfigure(0, weight=1)
 
         # Widgets
-        self.info_tabs = TabsWidget(frame_3, row=0, column=0, tab_names=["Manifest", "Validate Command", "Build Command"])
+        self.info_tabs = TabsWidget(frame, row=0, column=0, tab_names=["Manifest", "Validate Command", "Build Command"])
+
+
+    def build_frame_4(self, frame=None):
+        pass
+
+
+    def build_frame_5(self, frame=None):
+        pass
+
+
+    def build_frame_6(self, frame=None):
+        pass
+
+
+    def callback_extension_type_change(self, value):
+        if value == "add-on":
+            self.tags_picker.update_listbox(items=ADDON_TAGS)
+        elif value == "theme":
+            self.tags_picker.update_listbox(items=THEME_TAGS)
 
 
 if __name__ == "__main__":
+    set_licenses()
     app = App()
+    app.setup()
     app.mainloop()
