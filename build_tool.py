@@ -195,13 +195,14 @@ class Observers:
 
 
 class COLORS:
-    BLACK = "#050D0F" # Black
-    WHITE = "#F3F3F3" # White
-    BG1 = "#EEEEEE" # Light Grey
-    BG2 = "#CCCCCC" # Medium Grey
-    BG3 = "#AAAAAA" # Dark Grey
-    VALID = "#4ceb34" # Gren
-    ERROR = "#E56B6F" # Red
+    BG1    = "#EEEEEE" # Light Grey
+    BG2    = "#CCCCCC" # Medium Grey
+    BG3    = "#AAAAAA" # Dark Grey
+    BLACK  = "#050D0F" # Black
+    WHITE  = "#F3F3F3" # White
+    VALID  = "#4ceb34" # Gren
+    ERROR  = "#E56B6F" # Red
+    SELECT = "#5715c2" # Pruple Blue
 
 
 class RELIEF:
@@ -213,7 +214,7 @@ class RELIEF:
     GROOVE = "groove"
 
 
-def frame_config(frame, bg=COLORS.BG1, borderwidth=1, relief=RELIEF.RAISED, highlight_br=COLORS.BG3, highlight_bg=COLORS.BLACK):
+def frame_config(frame, bg=COLORS.BG1, borderwidth=1, relief=RELIEF.RAISED, highlight_br=COLORS.SELECT, highlight_bg=COLORS.BG3):
     if not isinstance(frame, tk.Frame): return
     frame.config(
         background=bg,
@@ -221,7 +222,7 @@ def frame_config(frame, bg=COLORS.BG1, borderwidth=1, relief=RELIEF.RAISED, high
         relief=relief,
         highlightcolor=highlight_br,
         highlightbackground=highlight_bg,
-        highlightthickness=1
+        highlightthickness=3
     )
 
 ########################•########################
@@ -235,7 +236,7 @@ class FolderPickerWidget:
 
         # Create Frame
         self.frame = tk.Frame(self.parent, padx=padx, pady=pady, bg=bg)
-        frame_config(self.frame)
+        frame_config(self.frame, bg=bg)
 
         # Add Frame
         self.frame.grid(row=row, column=column, sticky="we")
@@ -320,6 +321,11 @@ class TabsWidget:
         self.frame = frame
         self.tabs = {}
 
+        style = ttk.Style()
+        style.configure("TNotebook", background=COLORS.BLACK)
+        style.configure("TNotebook.Tab", background=COLORS.BLACK)
+        # style.configure("TNotebook.Background", background=COLORS.BLACK)
+
         # Notebook
         self.notebook = ttk.Notebook(self.frame)
         self.notebook.grid(row=row, column=column, sticky="nsew", padx=5)
@@ -348,7 +354,7 @@ class EntryWidget:
 
         # Create Frame
         self.frame = tk.Frame(self.parent, padx=padx, pady=pady, bg=bg)
-        frame_config(self.frame)
+        frame_config(self.frame, bg=bg)
 
         # Add Frame
         self.frame.grid(row=row, column=column, sticky="we")
@@ -398,7 +404,7 @@ class DropdownWidget:
 
         # Create Frame
         self.frame = tk.Frame(self.parent, padx=padx, pady=pady, bg=bg)
-        frame_config(self.frame)
+        frame_config(self.frame, bg=bg)
 
         # Add Frame
         self.frame.grid(row=row, column=column, sticky="we")
@@ -413,7 +419,7 @@ class DropdownWidget:
         self.options = options
 
         # Create Widgets
-        self.label = tk.Label(self.frame, text=label_text)
+        self.label = tk.Label(self.frame, text=label_text, bg=bg)
         self.dropdown = ttk.Combobox(self.frame, values=self.options, state="readonly")
 
         # Add Widgets
@@ -446,7 +452,7 @@ class VersionWidget:
 
         # Create Frame
         self.frame = tk.Frame(self.parent, padx=padx, pady=pady, bg=bg)
-        frame_config(self.frame)
+        frame_config(self.frame, bg=bg)
 
         # Add Frame
         self.frame.grid(row=row, column=column, sticky="we")
@@ -476,15 +482,15 @@ class VersionWidget:
         self.var_patch = tk.IntVar(value=min_ver[2])
 
         # Create Label
-        self.label = tk.Label(self.frame, text=label_text)
+        self.label = tk.Label(self.frame, text=label_text, bg=bg)
 
         # Add Label
         self.label.grid(row=0, column=0, sticky="w", padx=5)
 
         # Create Version Labels
-        self.label_major = tk.Label(self.frame, text="Major")
-        self.label_minor = tk.Label(self.frame, text="Minor")
-        self.label_patch = tk.Label(self.frame, text="Patch")
+        self.label_major = tk.Label(self.frame, text="Major", bg=bg)
+        self.label_minor = tk.Label(self.frame, text="Minor", bg=bg)
+        self.label_patch = tk.Label(self.frame, text="Patch", bg=bg)
 
         # Register Validator
         validate_cmd = self.frame.register(is_str_int)
@@ -559,7 +565,7 @@ class ListPickWidget:
 
         # Create Frame
         self.frame = tk.Frame(self.parent, padx=padx, pady=pady, bg=bg)
-        frame_config(self.frame)
+        frame_config(self.frame, bg=bg)
 
         # Add Frame
         self.frame.grid(row=row, column=column, sticky="we")
@@ -584,7 +590,7 @@ class ListPickWidget:
 
         # Label
         self.search_label = tk.Label(self.frame, text="Search", bg=bg, fg=COLORS.BLACK)
-        self.search_label.grid(row=0, column=1, sticky="w", padx=5)
+        self.search_label.grid(row=0, column=1, sticky="e", padx=5)
 
         # Entry
         self.search_entry = tk.Entry(self.frame)
@@ -593,7 +599,7 @@ class ListPickWidget:
 
         # Reset Button
         self.clear_search_btn = tk.Button(self.frame, text="Clear Search", command=self.clear_search, bg=COLORS.BLACK, fg=COLORS.WHITE)
-        self.clear_search_btn.grid(row=0, column=3, sticky="e")
+        self.clear_search_btn.grid(row=0, column=3, sticky="w")
 
         # --- LIST RESET --- #
 
@@ -668,8 +674,11 @@ class ListPickWidget:
 
 
     def clear_search(self, event=None):
+        selected_indices = self.listbox.curselection()
         self.search_entry.delete(0, tk.END)
         self.update_listbox(items=self.items)
+        for index in selected_indices:
+            self.listbox.select_set(index)
 
 ########################•########################
 """                 COMMANDERS                """
@@ -698,6 +707,17 @@ def set_licenses():
 """                APPLICATION                """
 ########################•########################
 
+
+'''
+ListPickWidget
+    - Make two list instead
+    - LEFT is the search list
+    - RIGHT is the selected list
+
+'''
+
+
+
 APP_NAME = "Blender Extension Creator"
 LABEL_WIDTH = 150
 
@@ -721,12 +741,12 @@ class App(tk.Tk):
         root.grid_rowconfigure(4, weight=1)
         root.grid_rowconfigure(5, weight=1)
         # Create frames
-        frame_1 = tk.Frame(root, padx=5, pady=5, borderwidth=1, relief=RELIEF.SUNKEN, background=COLORS.BG3)
-        frame_2 = tk.Frame(root, padx=5, pady=5, borderwidth=1, relief=RELIEF.SUNKEN, background=COLORS.BG2)
-        frame_3 = tk.Frame(root, padx=5, pady=5, borderwidth=1, relief=RELIEF.SUNKEN, background=COLORS.BG1)
-        frame_4 = tk.Frame(root, padx=5, pady=5, borderwidth=1, relief=RELIEF.SUNKEN, background=COLORS.BG2)
-        frame_5 = tk.Frame(root, padx=5, pady=5, borderwidth=1, relief=RELIEF.SUNKEN, background=COLORS.BG1)
-        frame_6 = tk.Frame(root, padx=5, pady=5, borderwidth=1, relief=RELIEF.SUNKEN, background=COLORS.BG2)
+        frame_1 = tk.Frame(root, padx=5, pady=5, background=COLORS.BLACK)
+        frame_2 = tk.Frame(root, padx=5, pady=5, background=COLORS.BLACK)
+        frame_3 = tk.Frame(root, padx=5, pady=5, background=COLORS.BLACK)
+        frame_4 = tk.Frame(root, padx=5, pady=5, background=COLORS.BLACK)
+        frame_5 = tk.Frame(root, padx=5, pady=5, background=COLORS.BLACK)
+        frame_6 = tk.Frame(root, padx=5, pady=5, background=COLORS.BLACK)
         # Add Frames
         frame_1.grid(row=0, column=0, sticky="nsew")
         frame_2.grid(row=1, column=0, sticky="nsew")
@@ -750,9 +770,9 @@ class App(tk.Tk):
         frame.grid_rowconfigure(1, weight=1)
         frame.grid_rowconfigure(2, weight=1)
         # Widgets
-        self.blender_picker = FolderPickerWidget(frame, row=0, column=0, padx=5, pady=5, label_text="Blender Exe Path", label_min_w=LABEL_WIDTH, bg=COLORS.BG3, pick_mode='EXE')
-        self.source_picker  = FolderPickerWidget(frame, row=1, column=0, padx=5, pady=5, label_text="Source Directory", label_min_w=LABEL_WIDTH, bg=COLORS.BG3, pick_mode='DIR')
-        self.build_picker   = FolderPickerWidget(frame, row=2, column=0, padx=5, pady=5, label_text="Build Directory" , label_min_w=LABEL_WIDTH, bg=COLORS.BG3, pick_mode='DIR')
+        self.blender_picker = FolderPickerWidget(frame, row=0, column=0, padx=5, pady=5, label_text="Blender Exe Path", label_min_w=LABEL_WIDTH, bg=COLORS.BG1, pick_mode='EXE')
+        self.source_picker  = FolderPickerWidget(frame, row=1, column=0, padx=5, pady=5, label_text="Source Directory", label_min_w=LABEL_WIDTH, bg=COLORS.BG1, pick_mode='DIR')
+        self.build_picker   = FolderPickerWidget(frame, row=2, column=0, padx=5, pady=5, label_text="Build Directory" , label_min_w=LABEL_WIDTH, bg=COLORS.BG1, pick_mode='DIR')
 
 
     def build_frame_2(self, frame):
@@ -768,8 +788,8 @@ class App(tk.Tk):
 
         # Configure
         tab_1 = self.info_tabs.get_tab_frame(tab_name="Required")
+        tab_1.config(bg=COLORS.BLACK)
         tab_1.grid_columnconfigure(0, weight=1, minsize=LABEL_WIDTH)
-        tab_1.grid_columnconfigure(1, weight=1)
         tab_1.grid_rowconfigure(0, weight=1)
         tab_1.grid_rowconfigure(1, weight=1)
         tab_1.grid_rowconfigure(2, weight=1)
@@ -800,7 +820,6 @@ class App(tk.Tk):
         # Configure
         tab_2 = self.info_tabs.get_tab_frame(tab_name="Optional")
         tab_2.grid_columnconfigure(0, weight=1, minsize=LABEL_WIDTH)
-        tab_2.grid_columnconfigure(1, weight=1)
         tab_2.grid_rowconfigure(0, weight=1)
         tab_2.grid_rowconfigure(1, weight=1)
         tab_2.grid_rowconfigure(2, weight=1)
@@ -818,9 +837,7 @@ class App(tk.Tk):
         # Configure
         tab_3 = self.info_tabs.get_tab_frame(tab_name="Build")
         tab_3.grid_columnconfigure(0, weight=1, minsize=LABEL_WIDTH)
-        tab_3.grid_columnconfigure(1, weight=1)
         tab_3.grid_rowconfigure(0, weight=1)
-        tab_3.grid_rowconfigure(1, weight=1)
 
         # Widgets
         self.exclude_patterns_pick = ListPickWidget(tab_3, row=4, column=0, padx=5, pady=5, label_text="Exclude Patterns", label_min_w=LABEL_WIDTH, bg=COLORS.BG1, items=PATH_EXCLUDE_PATTERNS)
@@ -854,9 +871,9 @@ class App(tk.Tk):
 
     def callback_extension_type_change(self, value):
         if value == "add-on":
-            self.tags_picker.update_listbox(items=ADDON_TAGS)
+            self.tags_pick.update_listbox(items=ADDON_TAGS)
         elif value == "theme":
-            self.tags_picker.update_listbox(items=THEME_TAGS)
+            self.tags_pick.update_listbox(items=THEME_TAGS)
 
 
 if __name__ == "__main__":
