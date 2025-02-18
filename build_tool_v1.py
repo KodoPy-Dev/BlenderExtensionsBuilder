@@ -207,6 +207,10 @@ VAR__BUILD_DIR = None
 WIG__BUILD_DIR = None
 
 # --- Section 2 --- #
+
+VAR_ADDON_TAGS = None
+VAR_THEME_TAGS = None
+
 # --- Section 3 --- #
 # --- Section 4 --- #
 # --- Section 5 --- #
@@ -541,40 +545,30 @@ def build_section_2_INFO(frame):
     notebook = ttk.Notebook(frame)
     notebook.grid(row=0, column=0, sticky="nsew", padx=10)
 
-    # Extension
+    # --- Extension --- #
     tab_1 = tk.Frame(notebook)
-    tools_var = tk.StringVar(value="None")
-    for tool in ["Resizing", "Rotating"]:
-        radio_btn = tk.Radiobutton(tab_1, text=tool, variable=tools_var, value=tool)
-        radio_btn.pack(anchor="w", padx=20, pady=5)
+    global VAR_ADDON_TAGS, VAR_THEME_TAGS
 
-    # Version
+    label = tk.Label(tab_1, text="Extension Tags")
+    label.grid(row=0, column=0, sticky="w")
+
+    VAR_ADDON_TAGS = tk.StringVar(value=ADDON_TAGS)
+    VAR_THEME_TAGS = tk.StringVar(value=THEME_TAGS)
+    tags_box = tk.Listbox(tab_1, listvariable=VAR_ADDON_TAGS, selectmode=tk.MULTIPLE, height=len(ADDON_TAGS))
+    tags_box.grid(row=1, column=0, sticky="w")
+
+    # --- Version --- #
     tab_2 = tk.Frame(notebook)
-    tools_var = tk.StringVar(value="None")
-    for tool in ["Resizing", "Rotating"]:
-        radio_btn = tk.Radiobutton(tab_2, text=tool, variable=tools_var, value=tool)
-        radio_btn.pack(anchor="w", padx=20, pady=5)
 
-    # Developer
+    # --- Developer --- #
     tab_3 = tk.Frame(notebook)
-    tools_var = tk.StringVar(value="None")
-    for tool in ["Resizing", "Rotating"]:
-        radio_btn = tk.Radiobutton(tab_3, text=tool, variable=tools_var, value=tool)
-        radio_btn.pack(anchor="w", padx=20, pady=5)
 
-    # License
+    # --- License --- #
     tab_4 = tk.Frame(notebook)
-    tools_var = tk.StringVar(value="None")
-    for tool in ["Resizing", "Rotating"]:
-        radio_btn = tk.Radiobutton(tab_4, text=tool, variable=tools_var, value=tool)
-        radio_btn.pack(anchor="w", padx=20, pady=5)
 
-    # Build
+    # --- Build --- #
     tab_5 = tk.Frame(notebook)
-    tools_var = tk.StringVar(value="None")
-    for tool in ["Resizing", "Rotating"]:
-        radio_btn = tk.Radiobutton(tab_5, text=tool, variable=tools_var, value=tool)
-        radio_btn.pack(anchor="w", padx=20, pady=5)
+
 
     # Add Tabs
     notebook.add(tab_1, text="Extension")
@@ -754,51 +748,3 @@ if __name__ == "__main__":
     else:
         print("Setup Failed")
 
-
-
-# class VerController:
-#     def __init__(self, parent, label="Version", min_ver=(0,0,0), add_use_check=False):
-#         self.frame = tk.Frame(parent, padx=2, pady=2, borderwidth=1, relief="solid")
-#         self.frame.pack(fill=tk.X)
-
-#         self.var_major = tk.IntVar(value=min_ver[0])
-#         self.var_minor = tk.IntVar(value=min_ver[1])
-#         self.var_patch = tk.IntVar(value=min_ver[2])
-#         self.var_use   = None
-#         if add_use_check:
-#             self.var_use = tk.BooleanVar(value=False)
-
-#         self.label = tk.Label(self.frame, text=label)
-#         self.spin_major = tk.Spinbox(self.frame, from_=min_ver[0], to=sys.maxsize, textvariable=self.var_major, width=5)
-#         self.spin_minor = tk.Spinbox(self.frame, from_=min_ver[1], to=sys.maxsize, textvariable=self.var_minor, width=5)
-#         self.spin_patch = tk.Spinbox(self.frame, from_=min_ver[2], to=sys.maxsize, textvariable=self.var_patch, width=5)
-#         self.check_box = None
-#         if add_use_check:
-#             self.check_box = tk.Checkbutton(self.frame, text='Use', variable=self.var_use, command=self.com_check_box, width=5)
-
-#         self.label.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
-#         if add_use_check:
-#             self.check_box.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
-#         else:
-#             self.spin_major.pack(side=tk.LEFT, expand=False, fill=tk.BOTH)
-#             self.spin_minor.pack(side=tk.LEFT, expand=False, fill=tk.BOTH)
-#             self.spin_patch.pack(side=tk.LEFT, expand=False, fill=tk.BOTH)
-
-
-#     def com_check_box(self):
-#         if self.var_use.get():
-#             self.spin_major.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
-#             self.spin_minor.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
-#             self.spin_patch.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
-#         else:
-#             self.spin_major.pack_forget()
-#             self.spin_minor.pack_forget()
-#             self.spin_patch.pack_forget()
-
-
-#     def get_version(self):
-#         # Check box is not used
-#         if self.check_box and self.var_use and not self.var_use.get():
-#             return None
-#         # Valid
-#         return (self.var_major.get(), self.var_minor.get(), self.var_patch.get())
